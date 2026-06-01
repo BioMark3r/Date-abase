@@ -181,7 +181,8 @@ async def create_date(
     title:               str          = Form(...),
     pre_date_activities: str          = Form(""),
     date_datetime:       str          = Form(...),
-    duration_minutes:    str          = Form(""),
+    duration_hours:      str          = Form(""),
+    duration_mins:       str          = Form(""),
     location_name:       str          = Form(""),
     location_lat:        str          = Form(""),
     location_lon:        str          = Form(""),
@@ -201,11 +202,15 @@ async def create_date(
             "error": "Invalid date format. 📅",
         })
 
+    h = int(duration_hours) if duration_hours.strip().isdigit() else 0
+    m = int(duration_mins)  if duration_mins.strip().isdigit()  else 0
+    total_mins = h * 60 + m
+
     entry = DateEntry(
         title=title,
         pre_date_activities=pre_date_activities or None,
         date_datetime=dt,
-        duration_minutes=int(duration_minutes) if duration_minutes else None,
+        duration_minutes=total_mins if total_mins else None,
         location_name=location_name or None,
         location_lat=float(location_lat) if location_lat else None,
         location_lon=float(location_lon) if location_lon else None,
@@ -265,7 +270,8 @@ async def update_date(
     title:               str          = Form(...),
     pre_date_activities: str          = Form(""),
     date_datetime:       str          = Form(...),
-    duration_minutes:    str          = Form(""),
+    duration_hours:      str          = Form(""),
+    duration_mins:       str          = Form(""),
     location_name:       str          = Form(""),
     location_lat:        str          = Form(""),
     location_lon:        str          = Form(""),
@@ -309,10 +315,14 @@ async def update_date(
         if fname:
             db.add(DateImage(date_id=entry.id, filename=fname))
 
+    h = int(duration_hours) if duration_hours.strip().isdigit() else 0
+    m = int(duration_mins)  if duration_mins.strip().isdigit()  else 0
+    total_mins = h * 60 + m
+
     entry.title               = title
     entry.pre_date_activities = pre_date_activities or None
     entry.date_datetime       = dt
-    entry.duration_minutes    = int(duration_minutes) if duration_minutes else None
+    entry.duration_minutes    = total_mins if total_mins else None
     entry.location_name       = location_name or None
     entry.location_lat        = float(location_lat) if location_lat else None
     entry.location_lon        = float(location_lon) if location_lon else None

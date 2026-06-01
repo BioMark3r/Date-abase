@@ -933,38 +933,39 @@ a:hover { color: var(--pink); }
   text-align: right;
 }
 
-/* ── Compact 3-col form row ────────────────────────────────────────────────── */
-.form-row-three {
-  grid-template-columns: 1.6fr 1fr 1fr;
+/* ── Duration h/m inline inputs ────────────────────────────────────────────── */
+.duration-hm {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.duration-h { width: 70px !important; text-align: center; }
+.duration-m { width: 70px !important; text-align: center; }
+.duration-sep {
+  font-weight: 700;
+  color: var(--rose);
+  font-size: 0.95rem;
+  flex-shrink: 0;
 }
 
-/* ── Compact heart rating ──────────────────────────────────────────────────── */
-.heart-rating-sm {
+/* ── JS heart rating ───────────────────────────────────────────────────────── */
+.heart-rating-js {
   display: flex;
-  flex-direction: row-reverse;
-  gap: 0.1rem;
-  width: fit-content;
+  gap: 0.25rem;
   margin-top: 0.2rem;
+  width: fit-content;
 }
-.heart-rating-sm input[type="radio"] { display: none; }
-.heart-rating-sm label {
-  font-size: 1.15rem;
+.hr-star {
+  font-size: 1.35rem;
   cursor: pointer;
-  filter: grayscale(1) opacity(0.35);
-  transition: filter var(--transition), transform var(--transition);
-  text-transform: none;
-  letter-spacing: 0;
-  font-weight: 400;
-  color: inherit;
-  margin-bottom: 0;
-  padding: 0.1rem;
+  filter: grayscale(1) opacity(0.28);
+  transition: filter 0.12s ease, transform 0.12s ease;
+  user-select: none;
+  line-height: 1;
 }
-.heart-rating-sm input:checked ~ label,
-.heart-rating-sm label:hover,
-.heart-rating-sm label:hover ~ label {
-  filter: grayscale(0) opacity(1);
-  transform: scale(1.15);
-}
+.hr-star.hr-active  { filter: grayscale(0) opacity(1); }
+.hr-star.hr-preview { filter: grayscale(0) opacity(0.75); transform: scale(1.18); }
+.hr-star:hover      { transform: scale(1.25); }
 
 /* ── Location search results dropdown ─────────────────────────────────────── */
 .location-results {
@@ -1329,8 +1330,8 @@ a:hover { color: var(--pink); }
   .stats-hero-inner { flex-wrap: wrap; }
   .stat-hero-card { flex: 1 1 40%; }
   .stat-hero-divider { display: none; }
-  .form-row,
-  .form-row-three { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+  .duration-hm { flex-wrap: wrap; }
   .detail-header-top { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
   .oracle-stats { gap: 1rem; padding: 1rem 1.5rem; }
   .splash-title { font-size: 2.2rem; }
