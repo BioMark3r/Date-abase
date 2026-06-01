@@ -21,78 +21,114 @@
 
     <!-- Hero graphic -->
     <div class="splash-graphic">
-      <svg viewBox="0 0 420 280" xmlns="http://www.w3.org/2000/svg" class="splash-svg">
-        <!-- Door frame -->
-        <rect x="140" y="40" width="140" height="220" rx="4" fill="#e8d5c4" stroke="#c4a882" stroke-width="3"/>
-        <rect x="148" y="48" width="124" height="204" rx="2" fill="#d4b896" stroke="#b8956a" stroke-width="1.5"/>
-        <!-- Door hinge -->
-        <rect x="138" y="90" width="14" height="30" rx="2" fill="#9e9e9e" stroke="#757575" stroke-width="1"/>
-        <rect x="138" y="160" width="14" height="30" rx="2" fill="#9e9e9e" stroke="#757575" stroke-width="1"/>
-        <!-- Door knob -->
-        <circle cx="262" cy="155" r="7" fill="#c4a882" stroke="#9e7a4a" stroke-width="1.5"/>
+      <svg viewBox="0 0 420 260" xmlns="http://www.w3.org/2000/svg" class="splash-svg">
+        <defs>
+          <!-- Left heart gradient (pink) -->
+          <radialGradient id="heartL" cx="40%" cy="35%" r="60%">
+            <stop offset="0%"   stop-color="#FF8FA3"/>
+            <stop offset="100%" stop-color="#C9184A"/>
+          </radialGradient>
+          <!-- Right heart gradient (rose) -->
+          <radialGradient id="heartR" cx="60%" cy="35%" r="60%">
+            <stop offset="0%"   stop-color="#FFB3C1"/>
+            <stop offset="100%" stop-color="#FF4D6D"/>
+          </radialGradient>
+          <!-- Explosion burst gradient -->
+          <radialGradient id="burst" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stop-color="#FFE0EA" stop-opacity="1"/>
+            <stop offset="100%" stop-color="#FFE0EA" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
 
-        <!-- Tall guy (6'1") -->
-        <!-- Body -->
-        <rect x="185" y="100" width="30" height="80" rx="6" fill="#546e8a"/>
-        <!-- Head -->
-        <circle cx="200" cy="88" r="20" fill="#f4c2a1"/>
-        <!-- Hair -->
-        <ellipse cx="200" cy="72" rx="20" ry="10" fill="#5d4037"/>
-        <ellipse cx="200" cy="78" rx="21" ry="8" fill="#5d4037"/>
-        <!-- Eyes (closed, happy) -->
-        <path d="M193 87 Q196 84 199 87" stroke="#5d4037" stroke-width="1.5" fill="none"/>
-        <path d="M201 87 Q204 84 207 87" stroke="#5d4037" stroke-width="1.5" fill="none"/>
-        <!-- Smile -->
-        <path d="M194 93 Q200 98 206 93" stroke="#c0725a" stroke-width="1.5" fill="none"/>
-        <!-- Legs -->
-        <rect x="187" y="178" width="12" height="60" rx="4" fill="#3a5068"/>
-        <rect x="201" y="178" width="12" height="60" rx="4" fill="#3a5068"/>
-        <!-- Shoes -->
-        <ellipse cx="193" cy="240" rx="10" ry="5" fill="#f0f0f0"/>
-        <ellipse cx="207" cy="240" rx="10" ry="5" fill="#f0f0f0"/>
-        <!-- Arms reaching/leaning -->
-        <path d="M185 120 Q170 140 168 158" stroke="#546e8a" stroke-width="8" stroke-linecap="round" fill="none"/>
-        <!-- Height label -->
-        <text x="162" y="88" font-family="Lato" font-size="11" fill="#C9184A" font-weight="700">6'1"</text>
+        <!-- Speed lines coming from left -->
+        <line x1="10"  y1="118" x2="98"  y2="122" stroke="#FFB3C1" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+        <line x1="18"  y1="100" x2="95"  y2="108" stroke="#FFB3C1" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+        <line x1="18"  y1="138" x2="95"  y2="134" stroke="#FFB3C1" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+        <line x1="28"  y1="82"  x2="96"  y2="96"  stroke="#FFB3C1" stroke-width="1"   stroke-linecap="round" opacity="0.25"/>
+        <line x1="28"  y1="156" x2="96"  y2="148" stroke="#FFB3C1" stroke-width="1"   stroke-linecap="round" opacity="0.25"/>
 
-        <!-- Short girl (4'11") -->
-        <!-- Body -->
-        <rect x="218" y="148" width="26" height="65" rx="6" fill="#e91e63" opacity="0.8"/>
-        <!-- Head -->
-        <circle cx="231" cy="136" r="17" fill="#f4c2a1"/>
-        <!-- Hair (bun) -->
-        <ellipse cx="231" cy="123" rx="17" ry="9" fill="#5d4037"/>
-        <circle cx="231" cy="116" r="7" fill="#5d4037"/>
-        <!-- Eyes (looking up, hearts) -->
-        <text x="224" y="137" font-size="9" font-family="serif">💗</text>
-        <!-- Smile -->
-        <path d="M225 141 Q231 146 237 141" stroke="#c0725a" stroke-width="1.5" fill="none"/>
-        <!-- Legs -->
-        <rect x="220" y="211" width="10" height="50" rx="4" fill="#880e4f" opacity="0.8"/>
-        <rect x="232" y="211" width="10" height="50" rx="4" fill="#880e4f" opacity="0.8"/>
-        <!-- Shoes (white sneakers) -->
-        <ellipse cx="225" cy="263" rx="9" ry="5" fill="#f5f5f5"/>
-        <ellipse cx="237" cy="263" rx="9" ry="5" fill="#f5f5f5"/>
-        <!-- Height label -->
-        <text x="248" y="155" font-family="Lato" font-size="11" fill="#C9184A" font-weight="700">4'11"</text>
+        <!-- Speed lines coming from right -->
+        <line x1="410" y1="118" x2="322" y2="122" stroke="#FFB3C1" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+        <line x1="402" y1="100" x2="325" y2="108" stroke="#FFB3C1" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+        <line x1="402" y1="138" x2="325" y2="134" stroke="#FFB3C1" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+        <line x1="392" y1="82"  x2="324" y2="96"  stroke="#FFB3C1" stroke-width="1"   stroke-linecap="round" opacity="0.25"/>
+        <line x1="392" y1="156" x2="324" y2="148" stroke="#FFB3C1" stroke-width="1"   stroke-linecap="round" opacity="0.25"/>
 
-        <!-- Angle arrow -->
-        <path d="M200 68 Q215 55 225 68" stroke="#FF6B9D" stroke-width="1.5" fill="none" stroke-dasharray="3,2"/>
-        <text x="220" y="52" font-family="Lato" font-size="9" fill="#C9184A">θ≈23°</text>
+        <!-- Impact burst circle -->
+        <circle cx="210" cy="122" r="62" fill="url(#burst)"/>
 
-        <!-- Height difference brace -->
-        <line x1="290" y1="88" x2="290" y2="136" stroke="#C9184A" stroke-width="1.5"/>
-        <line x1="285" y1="88" x2="295" y2="88" stroke="#C9184A" stroke-width="1.5"/>
-        <line x1="285" y1="136" x2="295" y2="136" stroke="#C9184A" stroke-width="1.5"/>
-        <text x="297" y="116" font-family="Lato" font-size="10" fill="#C9184A" font-weight="700">14"</text>
+        <!-- Impact star spikes -->
+        <g transform="translate(210,122)" stroke="#FF6B9D" stroke-width="2" stroke-linecap="round" opacity="0.7">
+          <line x1="0" y1="-68" x2="0"  y2="-52"/>
+          <line x1="0" y1=" 68" x2="0"  y2=" 52"/>
+          <line x1="-68" y1="0" x2="-52" y2="0"/>
+          <line x1=" 68" y1="0" x2=" 52" y2="0"/>
+          <line x1="-48" y1="-48" x2="-37" y2="-37"/>
+          <line x1=" 48" y1="-48" x2=" 37" y2="-37"/>
+          <line x1="-48" y1=" 48" x2="-37" y2=" 37"/>
+          <line x1=" 48" y1=" 48" x2=" 37" y2=" 37"/>
+        </g>
 
-        <!-- Small hearts floating -->
-        <text x="168" y="108" font-size="12">💕</text>
-        <text x="250" y="105" font-size="10">💗</text>
-        <text x="175" y="145" font-size="8">❤️</text>
+        <!-- LEFT heart — flying in from left, slightly tilted -->
+        <g transform="translate(108,122) rotate(-18) scale(1.08)" class="heart-left">
+          <path d="M0,-28 C0,-28 -52,-28 -52,14 C-52,42 0,70 0,70 C0,70 52,42 52,14 C52,-28 0,-28 0,-28 Z"
+                fill="url(#heartL)" stroke="#C9184A" stroke-width="2"/>
+          <!-- Cute face -->
+          <circle cx="-14" cy="8"  r="4.5" fill="#590D22"/>
+          <circle cx=" 14" cy="8"  r="4.5" fill="#590D22"/>
+          <circle cx="-12" cy="6"  r="1.5" fill="white"/>
+          <circle cx=" 16" cy="6"  r="1.5" fill="white"/>
+          <path d="M-12,28 Q0,40 12,28" stroke="#590D22" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <!-- Blush -->
+          <ellipse cx="-24" cy="22" rx="7" ry="4" fill="#FF8FA3" opacity="0.5"/>
+          <ellipse cx=" 24" cy="22" rx="7" ry="4" fill="#FF8FA3" opacity="0.5"/>
+          <!-- Motion squish lines on right side -->
+          <line x1="42" y1="-8"  x2="56" y2="-8"  stroke="#C9184A" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+          <line x1="46" y1="4"   x2="60" y2="4"    stroke="#C9184A" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+          <line x1="44" y1="16"  x2="58" y2="16"   stroke="#C9184A" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+        </g>
+
+        <!-- RIGHT heart — flying in from right, slightly tilted other way -->
+        <g transform="translate(312,122) rotate(18) scale(1.08)" class="heart-right">
+          <path d="M0,-28 C0,-28 -52,-28 -52,14 C-52,42 0,70 0,70 C0,70 52,42 52,14 C52,-28 0,-28 0,-28 Z"
+                fill="url(#heartR)" stroke="#FF4D6D" stroke-width="2"/>
+          <!-- Cute face -->
+          <circle cx="-14" cy="8"  r="4.5" fill="#590D22"/>
+          <circle cx=" 14" cy="8"  r="4.5" fill="#590D22"/>
+          <circle cx="-12" cy="6"  r="1.5" fill="white"/>
+          <circle cx=" 16" cy="6"  r="1.5" fill="white"/>
+          <path d="M-12,28 Q0,40 12,28" stroke="#590D22" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <!-- Blush -->
+          <ellipse cx="-24" cy="22" rx="7" ry="4" fill="#FFB3C1" opacity="0.5"/>
+          <ellipse cx=" 24" cy="22" rx="7" ry="4" fill="#FFB3C1" opacity="0.5"/>
+          <!-- Motion squish lines on left side -->
+          <line x1="-42" y1="-8"  x2="-56" y2="-8"  stroke="#FF4D6D" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+          <line x1="-46" y1="4"   x2="-60" y2="4"    stroke="#FF4D6D" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+          <line x1="-44" y1="16"  x2="-58" y2="16"   stroke="#FF4D6D" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+        </g>
+
+        <!-- Flying debris: mini hearts and stars from collision -->
+        <text x="188" y="42"  font-size="13" opacity="0.85" transform="rotate(-20,188,42)">💥</text>
+        <text x="216" y="36"  font-size="10" opacity="0.8"  transform="rotate(10,216,36)">✨</text>
+        <text x="168" y="58"  font-size="9"  opacity="0.75" transform="rotate(-30,168,58)">💗</text>
+        <text x="234" y="54"  font-size="9"  opacity="0.75" transform="rotate(25,234,54)">💗</text>
+        <text x="152" y="82"  font-size="8"  opacity="0.6"  transform="rotate(-15,152,82)">⭐</text>
+        <text x="254" y="78"  font-size="8"  opacity="0.6"  transform="rotate(15,254,78)">⭐</text>
+        <text x="200" y="195" font-size="8"  opacity="0.55" transform="rotate(5,200,195)">💕</text>
+        <text x="224" y="192" font-size="7"  opacity="0.5"  transform="rotate(-8,224,192)">💫</text>
+
+        <!-- BOOM label -->
+        <text x="210" y="116" font-family="Lato, sans-serif" font-size="22" font-weight="900"
+              fill="#C9184A" text-anchor="middle" letter-spacing="2"
+              transform="rotate(-8,210,116)" opacity="0.92">BOOM</text>
+        <text x="210" y="136" font-family="Lato, sans-serif" font-size="11" font-weight="700"
+              fill="#FF4D6D" text-anchor="middle" font-style="italic" opacity="0.8">💕 love at first collision 💕</text>
 
         <!-- Bottom tagline -->
-        <text x="210" y="278" font-family="Playfair Display" font-size="11" fill="#C9184A" text-anchor="middle" font-style="italic">14 inches of height difference. 100% chemistry.</text>
+        <text x="210" y="248" font-family="Playfair Display, serif" font-size="12"
+              fill="#C9184A" text-anchor="middle" font-style="italic" opacity="0.85">
+          When two hearts can't help but crash into each other.
+        </text>
       </svg>
     </div>
 
@@ -100,9 +136,9 @@
     <h1 class="splash-title">Date-abase</h1>
     <p class="splash-subtitle">A very scientific record of romance, engineered with love</p>
     <p class="splash-tagline">
-      <span class="badge-fun">📐 Door Hinge Certified</span>
-      <span class="badge-fun">🔮 Height Oracle Included</span>
-      <span class="badge-fun">💕 Love Certified™</span>
+      <span class="badge-fun">💥 Collision Certified™</span>
+      <span class="badge-fun">📋 Love Logged</span>
+      <span class="badge-fun">💕 Chemistry: 100%</span>
     </p>
 
     <!-- Login form -->
@@ -134,7 +170,7 @@
   </div>
 
   <footer class="splash-footer">
-    <p>💕 Powered by love, door hinge physics, and a 14-inch height difference</p>
+    <p>💕 Powered by love, questionable science, and two hearts on a collision course</p>
   </footer>
 
 </body>
