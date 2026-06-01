@@ -229,6 +229,82 @@ a:hover { color: var(--pink); }
   font-weight: 700;
 }
 
+/* ── Stats Hero ────────────────────────────────────────────────────────────── */
+.stats-hero {
+  background: linear-gradient(135deg, #fff0f5 0%, #ffffff 50%, #fff5f8 100%);
+  border: 1.5px solid var(--pink-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 0.5rem 1rem;
+  margin-bottom: 2.5rem;
+  overflow: hidden;
+}
+
+.stats-hero-inner {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  gap: 0;
+}
+
+.stat-hero-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.6rem 1rem;
+  text-align: center;
+  position: relative;
+  transition: background var(--transition);
+  border-radius: var(--radius);
+}
+.stat-hero-card:hover {
+  background: rgba(255, 107, 157, 0.05);
+}
+
+.stat-hero-divider {
+  width: 1.5px;
+  background: linear-gradient(to bottom, transparent, var(--pink-light), transparent);
+  margin: 1.2rem 0;
+  flex-shrink: 0;
+}
+
+.stat-hero-icon {
+  font-size: 1.6rem;
+  margin-bottom: 0.4rem;
+  line-height: 1;
+}
+
+.stat-hero-value {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--rose-dark);
+  line-height: 1.1;
+  margin-bottom: 0.3rem;
+}
+
+/* "Today 💕" / "X days ago" can be longish — scale it down a touch */
+.stat-hero-since-val {
+  font-size: 1.4rem;
+}
+
+.stat-hero-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--rose);
+  margin-bottom: 0.2rem;
+}
+
+.stat-hero-sub {
+  font-size: 0.75rem;
+  color: var(--gray-400);
+  font-style: italic;
+}
+
 /* ── Date Cards Grid ───────────────────────────────────────────────────────── */
 .dates-grid {
   display: grid;
@@ -862,7 +938,9 @@ a:hover { color: var(--pink); }
   .navbar { padding: 0.75rem 1rem; flex-direction: column; gap: 0.5rem; }
   .navbar-links { gap: 0.75rem; flex-wrap: wrap; justify-content: center; }
   .main-content { padding: 1.5rem 1rem 3rem; }
-  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .stats-hero-inner { flex-wrap: wrap; }
+  .stat-hero-card { flex: 1 1 40%; }
+  .stat-hero-divider { display: none; }
   .form-row { grid-template-columns: 1fr; }
   .detail-header-top { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
   .oracle-stats { gap: 1rem; padding: 1rem 1.5rem; }

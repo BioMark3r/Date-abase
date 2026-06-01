@@ -1,7 +1,7 @@
 import os
 import json
 import io
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -84,7 +84,46 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     if not require_auth(request):
         return RedirectResponse("/", status_code=302)
     dates = db.query(DateEntry).order_by(DateEntry.date_datetime.desc()).all()
-    return templates.TemplateResponse("dashboard.html", {"request": request, "dates": dates})
+
+    # ── Compute stats ──────────────────────────────────────────────────────────
+    total_dates = len(dates)
+
+    total_minutes = sum(d.duration_minutes for d in dates if d.duration_minutes)
+    if total_minutes >= 60:
+        time_together = f"{total_minutes // 60}h {total_minutes % 60}m"
+    elif total_minutes > 0:
+        time_together = f"{total_minutes}m"
+    else:
+        time_together = "—"
+
+    # Days since the most recent date (dates are sorted desc so first = latest)
+    if dates:
+        latest = dates[0].date_datetime
+        days_since = (datetime.now() - latest).days
+        if days_since == 0:
+            days_since_label = "Today 💕"
+        elif days_since == 1:
+            days_since_label = "Yesterday"
+        else:
+            days_since_label = f"{days_since} days ago"
+    else:
+        days_since_label = "—"
+
+    ratings = [d.rating for d in dates if d.rating]
+    avg_rating = round(sum(ratings) / len(ratings), 1) if ratings else None
+
+    stats = {
+        "total_dates": total_dates,
+        "time_together": time_together,
+        "days_since_label": days_since_label,
+        "avg_rating": avg_rating,
+    }
+
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "dates": dates,
+        "stats": stats,
+    })
 
 
 # ── Date CRUD ─────────────────────────────────────────────────────────────────

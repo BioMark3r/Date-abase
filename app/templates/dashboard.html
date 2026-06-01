@@ -32,32 +32,47 @@
   </div>
 </div>
 
-<!-- Stats row -->
+<!-- Stats hero -->
 {% if dates %}
-<div class="stats-row">
-  <div class="stat-card">
-    <span class="stat-number">{{ dates|length }}</span>
-    <span class="stat-label">Total Dates</span>
-  </div>
-  <div class="stat-card">
-    <span class="stat-number">
-      {% set total_mins = namespace(v=0) %}
-      {% for d in dates %}{% if d.duration_minutes %}{% set total_mins.v = total_mins.v + d.duration_minutes %}{% endif %}{% endfor %}
-      {% if total_mins.v >= 60 %}{{ (total_mins.v // 60) }}h {{ total_mins.v % 60 }}m{% else %}{{ total_mins.v }}m{% endif %}
-    </span>
-    <span class="stat-label">Time Together</span>
-  </div>
-  <div class="stat-card">
-    <span class="stat-number">
-      {% set avg = namespace(total=0, count=0) %}
-      {% for d in dates %}{% if d.rating %}{% set avg.total = avg.total + d.rating %}{% set avg.count = avg.count + 1 %}{% endif %}{% endfor %}
-      {% if avg.count > 0 %}{{ "%.1f"|format(avg.total / avg.count) }}{% else %}—{% endif %}
-    </span>
-    <span class="stat-label">Avg Rating</span>
-  </div>
-  <div class="stat-card">
-    <span class="stat-number">💕</span>
-    <span class="stat-label">Chemistry</span>
+<div class="stats-hero">
+  <div class="stats-hero-inner">
+
+    <div class="stat-hero-card stat-hero-dates">
+      <div class="stat-hero-icon">💕</div>
+      <div class="stat-hero-value">{{ stats.total_dates }}</div>
+      <div class="stat-hero-label">Total Dates</div>
+      <div class="stat-hero-sub">and counting…</div>
+    </div>
+
+    <div class="stat-hero-divider"></div>
+
+    <div class="stat-hero-card stat-hero-time">
+      <div class="stat-hero-icon">⏱️</div>
+      <div class="stat-hero-value">{{ stats.time_together }}</div>
+      <div class="stat-hero-label">Time Together</div>
+      <div class="stat-hero-sub">every minute counts</div>
+    </div>
+
+    <div class="stat-hero-divider"></div>
+
+    <div class="stat-hero-card stat-hero-since">
+      <div class="stat-hero-icon">📅</div>
+      <div class="stat-hero-value stat-hero-since-val">{{ stats.days_since_label }}</div>
+      <div class="stat-hero-label">Last Date</div>
+      <div class="stat-hero-sub">don't wait too long 😉</div>
+    </div>
+
+    <div class="stat-hero-divider"></div>
+
+    <div class="stat-hero-card stat-hero-rating">
+      <div class="stat-hero-icon">⭐</div>
+      <div class="stat-hero-value">
+        {% if stats.avg_rating %}{{ stats.avg_rating }}{% else %}—{% endif %}
+      </div>
+      <div class="stat-hero-label">Avg Rating</div>
+      <div class="stat-hero-sub">out of 5 hearts</div>
+    </div>
+
   </div>
 </div>
 
