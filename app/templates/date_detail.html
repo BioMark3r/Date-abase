@@ -89,8 +89,53 @@
   </section>
   {% endif %}
 
+  <section class="detail-section audit-history-section">
+    <h2 class="detail-section-title">📋 Change History</h2>
+    {% if audit_logs %}
+    <table class="audit-table">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Who</th>
+          <th>Action</th>
+          <th>Changes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in audit_logs %}
+        <tr class="audit-row audit-{{ log.action }}">
+          <td class="audit-ts">{{ log.timestamp.strftime('%b %d, %Y') }}<br><small>{{ log.timestamp.strftime('%-I:%M %p') }}</small></td>
+          <td class="audit-who"><span class="audit-who-badge">{{ log.changed_by }}</span></td>
+          <td class="audit-action"><span class="audit-action-badge audit-{{ log.action }}">{{ log.action }}</span></td>
+          <td class="audit-changes">
+            {% if log.changes %}
+              {% for field, diff in log.changes.items() %}
+              <div class="audit-diff-row">
+                <span class="audit-field">{{ diff.label }}</span>
+                {% if diff.from %}
+                  <span class="audit-from">{{ diff.from[:60] }}{% if diff.from|length > 60 %}…{% endif %}</span>
+                  <span class="audit-arrow">→</span>
+                {% endif %}
+                <span class="audit-to">{{ diff.to[:60] if diff.to else '(cleared)' }}{% if diff.to and diff.to|length > 60 %}…{% endif %}</span>
+              </div>
+              {% endfor %}
+            {% else %}
+              <span class="audit-no-diff">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="audit-empty">No changes recorded yet. History starts the moment you save. 📝</p>
+    {% endif %}
+  </section>
+
   <div class="detail-footer-meta">
     <span>Logged on {{ entry.created_at.strftime('%B %d, %Y') if entry.created_at else 'unknown date' }}</span>
+    &nbsp;·&nbsp;
+    <a href="/audit" class="map-link">View full audit log →</a>
   </div>
 
 </div>

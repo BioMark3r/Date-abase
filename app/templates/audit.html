@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Romance Audit Log 📋 — Date-abase{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>📋 Romance Audit Log</h1>
+  <p class="page-subtitle">Every create, edit, and delete — who did it, when, and exactly what changed</p>
+</div>
+
+<div class="action-bar">
+  <span class="comm-count-badge">
+    <code>{{ logs | length }}</code> entries shown &nbsp;·&nbsp;
+    <code>{{ '%X' % (logs | length) }} <small>hex</small></code>
+  </span>
+  <a href="/settings" class="btn btn-outline">⚙️ Edit Partner Names</a>
+</div>
+
+{% if logs %}
+<div class="audit-full-table-wrap">
+  <table class="audit-table audit-table-full">
+    <thead>
+      <tr>
+        <th style="width:130px;">When</th>
+        <th style="width:110px;">Who</th>
+        <th style="width:80px;">Action</th>
+        <th style="width:80px;">Type</th>
+        <th>Record</th>
+        <th>Changes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+      <tr class="audit-row">
+        <td class="audit-ts">
+          {{ log.timestamp.strftime('%b %d, %Y') }}<br>
+          <small>{{ log.timestamp.strftime('%-I:%M %p') }}</small>
+        </td>
+        <td class="audit-who">
+          <span class="audit-who-badge">{{ log.changed_by }}</span>
+        </td>
+        <td class="audit-action">
+          <span class="audit-action-badge audit-{{ log.action }}">{{ log.action }}</span>
+        </td>
+        <td>
+          <span class="audit-type-badge audit-type-{{ log.entity_type }}">
+            {% if log.entity_type == 'date' %}📅{% else %}📡{% endif %}
+            {{ log.entity_type }}
+          </span>
+        </td>
+        <td class="audit-entity">
+          {% if log.entity_type == 'date' and log.action != 'deleted' %}
+            <a href="/dates/{{ log.entity_id }}" class="audit-entity-link">{{ log.entity_title or '—' }}</a>
+          {% else %}
+            <span class="audit-entity-deleted">{{ log.entity_title or '—' }}</span>
+          {% endif %}
+        </td>
+        <td class="audit-changes">
+          {% if log.changes %}
+            {% for field, diff in log.changes.items() %}
+            <div class="audit-diff-row">
+              <span class="audit-field">{{ diff.label }}</span>
+              {% if diff.from %}
+                <span class="audit-from">{{ diff.from[:50] }}{% if diff.from|length > 50 %}…{% endif %}</span>
+                <span class="audit-arrow">→</span>
+              {% endif %}
+              <span class="audit-to">{{ diff.to[:50] if diff.to else '(cleared)' }}{% if diff.to and diff.to|length > 50 %}…{% endif %}</span>
+            </div>
+            {% endfor %}
+          {% elif log.action == 'created' %}
+            <span class="audit-no-diff">New record created</span>
+          {% elif log.action == 'deleted' %}
+            <span class="audit-no-diff">Record deleted</span>
+          {% else %}
+            <span class="audit-no-diff">No field changes</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% else %}
+<div class="empty-state">
+  <div class="empty-graphic">📋</div>
+  <h2>No audit entries yet!</h2>
+  <p>Start creating and editing dates and comms — every change will be recorded here.</p>
+  <a href="/dates/new" class="btn btn-primary btn-lg">Log First Date ➕</a>
+</div>
+{% endif %}
+
+{% endblock %}

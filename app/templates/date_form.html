@@ -175,6 +175,24 @@
       </div>
     </div>
 
+    <!-- Who's logging this -->
+    <div class="form-section">
+      <h3 class="form-section-title">✍️ Logged by</h3>
+      <div class="who-picker">
+        <label class="who-btn">
+          <input type="radio" name="changed_by"
+            value="{{ settings.partner1_name }}" checked>
+          <span>💕 {{ settings.partner1_name }}</span>
+        </label>
+        <label class="who-btn">
+          <input type="radio" name="changed_by"
+            value="{{ settings.partner2_name }}">
+          <span>💕 {{ settings.partner2_name }}</span>
+        </label>
+      </div>
+      <span class="form-hint">This will be recorded in the romance audit log 📋</span>
+    </div>
+
     <!-- Submit -->
     <div class="form-actions">
       <button type="submit" class="btn btn-primary btn-lg">

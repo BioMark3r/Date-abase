@@ -1322,6 +1322,150 @@ a:hover { color: var(--pink); }
   font-weight: 600;
 }
 
+/* ── Who picker (segmented control) ───────────────────────────────────────── */
+.who-picker {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.who-btn {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  border: 2px solid var(--pink-light);
+  border-radius: 10px;
+  padding: 0.55rem 1.2rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gray-600);
+  background: var(--white);
+  transition: all var(--transition);
+  user-select: none;
+}
+.who-btn input[type="radio"] {
+  display: none;   /* hide the radio — visual state via :has() */
+}
+.who-btn:has(input:checked) {
+  background: linear-gradient(135deg, var(--pink), var(--rose-mid));
+  color: var(--white);
+  border-color: transparent;
+  box-shadow: 0 3px 12px rgba(255,107,157,0.35);
+}
+.who-btn:hover:not(:has(input:checked)) {
+  border-color: var(--pink);
+  color: var(--rose);
+  background: var(--pink-pale);
+}
+
+/* ── Audit table ───────────────────────────────────────────────────────────── */
+.audit-history-section { overflow-x: auto; }
+
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.audit-table th {
+  text-align: left;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--rose);
+  font-weight: 700;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 2px solid var(--pink-light);
+  white-space: nowrap;
+}
+.audit-table td {
+  padding: 0.65rem 0.75rem;
+  vertical-align: top;
+  border-bottom: 1px solid var(--gray-200);
+  line-height: 1.4;
+}
+.audit-row:hover td { background: var(--pink-pale); }
+
+.audit-ts { color: var(--gray-600); font-size: 0.82rem; white-space: nowrap; }
+.audit-ts small { color: var(--gray-400); font-size: 0.75rem; }
+
+.audit-who-badge {
+  background: var(--pink-pale);
+  color: var(--rose-dark);
+  border: 1px solid var(--pink-light);
+  border-radius: 14px;
+  padding: 0.18rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.audit-action-badge {
+  border-radius: 6px;
+  padding: 0.18rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+.audit-action-badge.audit-created  { background: #e8f5e9; color: #2e7d32; }
+.audit-action-badge.audit-updated  { background: #fff8e1; color: #f57f17; }
+.audit-action-badge.audit-deleted  { background: #fce4ec; color: #c62828; }
+
+.audit-type-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 0.18rem 0.55rem;
+  white-space: nowrap;
+}
+.audit-type-badge.audit-type-date  { background: var(--pink-pale); color: var(--rose); }
+.audit-type-badge.audit-type-comm  { background: #e8eaf6; color: #3949ab; }
+
+.audit-entity-link  { color: var(--rose); font-weight: 600; }
+.audit-entity-deleted { color: var(--gray-400); font-style: italic; }
+
+.audit-diff-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.82rem;
+}
+.audit-field {
+  font-weight: 700;
+  color: var(--rose-dark);
+  min-width: 80px;
+  flex-shrink: 0;
+}
+.audit-from {
+  color: var(--gray-400);
+  text-decoration: line-through;
+  font-style: italic;
+  word-break: break-word;
+}
+.audit-arrow { color: var(--gray-400); flex-shrink: 0; }
+.audit-to   { color: var(--gray-800); font-weight: 600; word-break: break-word; }
+.audit-no-diff { color: var(--gray-400); font-style: italic; font-size: 0.8rem; }
+
+.audit-empty {
+  color: var(--gray-400);
+  font-style: italic;
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+.audit-full-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--pink-light);
+  box-shadow: var(--shadow-sm);
+  background: var(--white);
+}
+.audit-table-full th:first-child { border-radius: var(--radius-lg) 0 0 0; }
+.audit-table-full th:last-child  { border-radius: 0 var(--radius-lg) 0 0; }
+
 /* ── Responsive ────────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .navbar { padding: 0.75rem 1rem; flex-direction: column; gap: 0.5rem; }

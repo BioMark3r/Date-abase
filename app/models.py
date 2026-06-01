@@ -1,3 +1,4 @@
+import json as _json
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, Float, DateTime, ForeignKey, func
 from sqlalchemy.orm import relationship
@@ -74,3 +75,34 @@ class CommEntry(Base):
             "description": self.description,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+
+
+class AppSettings(Base):
+    """Simple key-value store for app-level settings (partner names, etc.)."""
+    __tablename__ = "app_settings"
+
+    key   = Column(String(100), primary_key=True)
+    value = Column(Text, nullable=True)
+
+
+class AuditLog(Base):
+    """Records every create / update / delete across dates and comms."""
+    __tablename__ = "audit_log"
+
+    id           = Column(Integer, primary_key=True, index=True)
+    timestamp    = Column(DateTime, default=func.now())
+    changed_by   = Column(String(100), nullable=False)
+    action       = Column(String(20),  nullable=False)   # created | updated | deleted
+    entity_type  = Column(String(20),  nullable=False)   # date | comm
+    entity_id    = Column(Integer,     nullable=False)
+    entity_title = Column(String(300), nullable=True)    # snapshot of title at time of change
+    changes_json = Column(Text,        nullable=True)    # JSON field diff
+
+    @property
+    def changes(self) -> dict:
+        if self.changes_json:
+            try:
+                return _json.loads(self.changes_json)
+            except Exception:
+                return {}
+        return {}

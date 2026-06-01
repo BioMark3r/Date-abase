@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Settings ⚙️ — Date-abase{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>⚙️ Settings</h1>
+  <p class="page-subtitle">Configure the app — names show up in the audit log and on every form</p>
+</div>
+
+{% if saved %}
+<div class="alert-success">✅ Settings saved! Names updated across the app.</div>
+{% endif %}
+
+<div class="form-card" style="max-width: 520px;">
+  <form method="post" action="/settings">
+
+    <div class="form-section">
+      <h3 class="form-section-title">💕 Partner Names</h3>
+      <p style="color:var(--gray-600); font-size:0.9rem; margin-bottom:1.25rem;">
+        These names appear on every form's "Logged by" toggle and in the romance audit log.
+      </p>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="partner1_name">Partner 1</label>
+          <input type="text" id="partner1_name" name="partner1_name" class="form-input"
+            placeholder="e.g. Alice"
+            value="{{ settings.partner1_name }}" maxlength="40" />
+        </div>
+        <div class="form-group">
+          <label for="partner2_name">Partner 2</label>
+          <input type="text" id="partner2_name" name="partner2_name" class="form-input"
+            placeholder="e.g. Bob"
+            value="{{ settings.partner2_name }}" maxlength="40" />
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">💾 Save Settings</button>
+      <a href="/dashboard" class="btn btn-ghost">Cancel</a>
+    </div>
+
+  </form>
+</div>
+{% endblock %}
