@@ -933,6 +933,145 @@ a:hover { color: var(--pink); }
   text-align: right;
 }
 
+/* ── Compact 3-col form row ────────────────────────────────────────────────── */
+.form-row-three {
+  grid-template-columns: 1.6fr 1fr 1fr;
+}
+
+/* ── Compact heart rating ──────────────────────────────────────────────────── */
+.heart-rating-sm {
+  display: flex;
+  flex-direction: row-reverse;
+  gap: 0.1rem;
+  width: fit-content;
+  margin-top: 0.2rem;
+}
+.heart-rating-sm input[type="radio"] { display: none; }
+.heart-rating-sm label {
+  font-size: 1.15rem;
+  cursor: pointer;
+  filter: grayscale(1) opacity(0.35);
+  transition: filter var(--transition), transform var(--transition);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  color: inherit;
+  margin-bottom: 0;
+  padding: 0.1rem;
+}
+.heart-rating-sm input:checked ~ label,
+.heart-rating-sm label:hover,
+.heart-rating-sm label:hover ~ label {
+  filter: grayscale(0) opacity(1);
+  transform: scale(1.15);
+}
+
+/* ── Location search results dropdown ─────────────────────────────────────── */
+.location-results {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  background: var(--white);
+  border: 1.5px solid var(--pink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  z-index: 500;
+  overflow: hidden;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.loc-result-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--gray-200);
+  transition: background var(--transition);
+}
+.loc-result-item:last-child { border-bottom: none; }
+.loc-result-item:hover { background: var(--pink-pale); }
+
+.loc-result-loading,
+.loc-result-empty {
+  color: var(--gray-400);
+  font-size: 0.88rem;
+  cursor: default;
+  justify-content: center;
+}
+.loc-result-loading:hover,
+.loc-result-empty:hover { background: none; }
+
+.loc-result-icon { font-size: 1.2rem; flex-shrink: 0; }
+.loc-result-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.loc-result-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.loc-result-type {
+  font-size: 0.75rem;
+  color: var(--gray-400);
+  text-transform: capitalize;
+}
+
+/* ── Confirmed location chip ───────────────────────────────────────────────── */
+.location-confirmed {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #f0fff4;
+  border: 1.5px solid #b2dfdb;
+  border-radius: var(--radius);
+  padding: 0.6rem 1rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+.location-confirmed-icon { font-size: 1.1rem; flex-shrink: 0; }
+.location-confirmed-name {
+  flex: 1;
+  font-weight: 600;
+  color: #1b6b3a;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.location-confirmed-clear {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  transition: color var(--transition), background var(--transition);
+}
+.location-confirmed-clear:hover { color: #c0392b; background: #fff0f0; }
+
+/* Distinct confirmed pin style */
+.map-pin-confirmed {
+  font-size: 32px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(201,24,74,0.4));
+  animation: pin-drop 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes pin-drop {
+  0%   { transform: translateY(-20px) scale(0.8); opacity: 0; }
+  100% { transform: translateY(0)     scale(1);   opacity: 1; }
+}
+
 /* ── Hex Badge ─────────────────────────────────────────────────────────────── */
 .hex-badge {
   font-family: 'Courier New', Courier, monospace;
@@ -1190,7 +1329,8 @@ a:hover { color: var(--pink); }
   .stats-hero-inner { flex-wrap: wrap; }
   .stat-hero-card { flex: 1 1 40%; }
   .stat-hero-divider { display: none; }
-  .form-row { grid-template-columns: 1fr; }
+  .form-row,
+  .form-row-three { grid-template-columns: 1fr; }
   .detail-header-top { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
   .oracle-stats { gap: 1rem; padding: 1rem 1.5rem; }
   .splash-title { font-size: 2.2rem; }

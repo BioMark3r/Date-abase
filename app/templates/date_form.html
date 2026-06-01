@@ -31,7 +31,7 @@
         <span class="form-hint">Give this date a memorable name</span>
       </div>
 
-      <div class="form-row">
+      <div class="form-row form-row-three">
         <div class="form-group">
           <label for="date_datetime">Date &amp; Time <span class="required">*</span></label>
           <input type="datetime-local" id="date_datetime" name="date_datetime" class="form-input"
@@ -39,23 +39,21 @@
             required />
         </div>
         <div class="form-group">
-          <label for="duration_minutes">Duration (minutes)</label>
+          <label for="duration_minutes">Duration (mins)</label>
           <input type="number" id="duration_minutes" name="duration_minutes" class="form-input"
             placeholder="e.g. 180"
             value="{{ entry.duration_minutes if entry and entry.duration_minutes else '' }}"
             min="1" max="10080" />
-          <span class="form-hint">How long did it last? (in minutes)</span>
         </div>
-      </div>
-
-      <div class="form-group">
-        <label for="rating">Rating</label>
-        <div class="heart-rating" id="heart-rating">
-          {% for i in range(1, 6) %}
-          <input type="radio" name="rating" id="r{{ i }}" value="{{ i }}"
-            {% if entry and entry.rating == i %}checked{% elif not entry and i == 5 %}checked{% endif %} />
-          <label for="r{{ i }}" title="{{ i }} heart{% if i > 1 %}s{% endif %}">❤️</label>
-          {% endfor %}
+        <div class="form-group">
+          <label>Rating</label>
+          <div class="heart-rating-sm" id="heart-rating">
+            {% for i in range(1, 6) %}
+            <input type="radio" name="rating" id="r{{ i }}" value="{{ i }}"
+              {% if entry and entry.rating == i %}checked{% elif not entry and i == 5 %}checked{% endif %} />
+            <label for="r{{ i }}" title="{{ i }} heart{% if i > 1 %}s{% endif %}">❤️</label>
+            {% endfor %}
+          </div>
         </div>
       </div>
     </div>
@@ -73,17 +71,35 @@
     <!-- Location -->
     <div class="form-section">
       <h3 class="form-section-title">📍 Where Did It Happen?</h3>
-      <div class="form-group">
+
+      <!-- Search row -->
+      <div class="form-group" style="position:relative;">
         <label for="location-search">Search Location</label>
         <div class="location-search-row">
           <input type="text" id="location-search" class="form-input"
-            placeholder="Search for a place... (e.g. Central Park, New York)" />
-          <button type="button" class="btn btn-outline" onclick="searchLocation()">🔍 Search</button>
+            placeholder="Search for a place… (e.g. Central Park, New York)"
+            autocomplete="off" />
+          <button type="button" class="btn btn-outline" id="loc-search-btn">🔍 Search</button>
         </div>
+
+        <!-- Results dropdown -->
+        <div id="location-results" class="location-results" style="display:none;"></div>
       </div>
+
+      <!-- Confirmed location chip -->
+      <div id="location-confirmed" class="location-confirmed" style="display:none;">
+        <span class="location-confirmed-icon">✅</span>
+        <span id="location-confirmed-text" class="location-confirmed-name"></span>
+        <button type="button" class="location-confirmed-clear" onclick="clearLocation()" title="Clear location">✕</button>
+      </div>
+
+      <!-- Map -->
       <div id="map" class="map-container"></div>
-      <div class="form-group" style="margin-top: 0.75rem;">
-        <label for="location_name">Location Name</label>
+      <p class="form-hint" style="margin-top:0.4rem;">You can also click the map or drag the pin to fine-tune the position.</p>
+
+      <!-- Hidden fields + editable name override -->
+      <div class="form-group" style="margin-top:0.75rem;">
+        <label for="location_name">Location Label <span class="form-hint" style="font-weight:400;">(edit to personalise)</span></label>
         <input type="text" id="location_name" name="location_name" class="form-input"
           placeholder="e.g. The cute coffee shop on Main Street"
           value="{{ entry.location_name if entry and entry.location_name else '' }}" />
@@ -166,73 +182,174 @@
 {% block scripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  // Init map
+  // ── Map init ────────────────────────────────────────────────────────────────
   const initLat = {{ entry.location_lat if entry and entry.location_lat else 40.7128 }};
   const initLon = {{ entry.location_lon if entry and entry.location_lon else -74.0060 }};
-  const hasPin = {{ 'true' if entry and entry.location_lat else 'false' }};
+  const hasPin  = {{ 'true' if entry and entry.location_lat else 'false' }};
 
   const map = L.map('map').setView([initLat, initLon], hasPin ? 14 : 4);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
   }).addTo(map);
 
-  const heartIcon = L.divIcon({ className: '', html: '<div style="font-size:28px;line-height:1;">📍</div>', iconSize: [28, 28], iconAnchor: [14, 28] });
+  const pinIcon = L.divIcon({
+    className: '',
+    html: '<div class="map-pin-confirmed">📍</div>',
+    iconSize: [32, 32], iconAnchor: [16, 32]
+  });
 
   let marker = null;
+
+  function placePin(lat, lng, draggable = true) {
+    if (marker) marker.setLatLng([lat, lng]);
+    else {
+      marker = L.marker([lat, lng], { icon: pinIcon, draggable }).addTo(map);
+      marker.on('dragend', e => {
+        const p = e.target.getLatLng();
+        setLatLon(p.lat, p.lng);
+        reverseGeocode(p.lat, p.lng, false); // update label on drag, don't overwrite confirmed
+      });
+    }
+  }
+
   if (hasPin) {
-    marker = L.marker([initLat, initLon], { icon: heartIcon, draggable: true }).addTo(map);
-    marker.on('dragend', updateLatLon);
+    placePin(initLat, initLon);
+    showConfirmed('{{ entry.location_name if entry and entry.location_name else "" }}');
   }
 
   map.on('click', function(e) {
     const { lat, lng } = e.latlng;
-    if (marker) marker.setLatLng([lat, lng]);
-    else marker = L.marker([lat, lng], { icon: heartIcon, draggable: true }).addTo(map);
-    marker.on('dragend', updateLatLon);
-    document.getElementById('location_lat').value = lat.toFixed(6);
-    document.getElementById('location_lon').value = lng.toFixed(6);
-    reverseGeocode(lat, lng);
+    placePin(lat, lng);
+    setLatLon(lat, lng);
+    reverseGeocode(lat, lng, true);
+    hideResults();
   });
 
-  function updateLatLon(e) {
-    const { lat, lng } = e.target.getLatLng();
+  function setLatLon(lat, lng) {
     document.getElementById('location_lat').value = lat.toFixed(6);
     document.getElementById('location_lon').value = lng.toFixed(6);
   }
 
-  function reverseGeocode(lat, lon) {
+  function reverseGeocode(lat, lon, updateConfirmed) {
     fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
       .then(r => r.json())
       .then(d => {
-        if (d.display_name && !document.getElementById('location_name').value) {
-          document.getElementById('location_name').value = d.display_name.split(',').slice(0,3).join(',').trim();
-        }
+        if (!d.display_name) return;
+        const short = shortName(d.display_name);
+        document.getElementById('location_name').value = short;
+        if (updateConfirmed) showConfirmed(short);
       }).catch(() => {});
   }
 
-  function searchLocation() {
-    const q = document.getElementById('location-search').value.trim();
-    if (!q) return;
-    fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`)
-      .then(r => r.json())
-      .then(results => {
-        if (!results.length) { alert('Location not found. Try a different search! 📍'); return; }
-        const { lat, lon, display_name } = results[0];
-        const latlng = [parseFloat(lat), parseFloat(lon)];
-        map.setView(latlng, 14);
-        if (marker) marker.setLatLng(latlng);
-        else marker = L.marker(latlng, { icon: heartIcon, draggable: true }).addTo(map);
-        marker.on('dragend', updateLatLon);
-        document.getElementById('location_lat').value = parseFloat(lat).toFixed(6);
-        document.getElementById('location_lon').value = parseFloat(lon).toFixed(6);
-        if (!document.getElementById('location_name').value)
-          document.getElementById('location_name').value = display_name.split(',').slice(0,3).join(',').trim();
-      }).catch(() => alert('Search failed. Check your connection! 🌐'));
+  function shortName(display_name) {
+    return display_name.split(',').slice(0, 3).join(',').trim();
   }
 
-  document.getElementById('location-search').addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); searchLocation(); }
+  // ── Search with dropdown results ────────────────────────────────────────────
+  const searchInput = document.getElementById('location-search');
+  const resultsBox  = document.getElementById('location-results');
+  let searchTimeout = null;
+
+  document.getElementById('loc-search-btn').addEventListener('click', doSearch);
+  searchInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
+    if (e.key === 'Escape') hideResults();
   });
+
+  // Live search after 400ms pause
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    const q = searchInput.value.trim();
+    if (q.length < 3) { hideResults(); return; }
+    searchTimeout = setTimeout(doSearch, 400);
+  });
+
+  function doSearch() {
+    const q = searchInput.value.trim();
+    if (!q) return;
+    resultsBox.innerHTML = '<div class="loc-result-item loc-result-loading">🔍 Searching…</div>';
+    resultsBox.style.display = 'block';
+
+    fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=1`)
+      .then(r => r.json())
+      .then(results => {
+        if (!results.length) {
+          resultsBox.innerHTML = '<div class="loc-result-item loc-result-empty">😕 No results found. Try a different search.</div>';
+          return;
+        }
+        resultsBox.innerHTML = '';
+        results.forEach((r, i) => {
+          const item = document.createElement('div');
+          item.className = 'loc-result-item';
+          const typeLabel = r.type ? r.type.replace(/_/g, ' ') : r.class || '';
+          item.innerHTML = `
+            <span class="loc-result-icon">${locationEmoji(r.class, r.type)}</span>
+            <span class="loc-result-body">
+              <span class="loc-result-name">${shortName(r.display_name)}</span>
+              <span class="loc-result-type">${typeLabel}</span>
+            </span>
+          `;
+          item.addEventListener('click', () => selectResult(r));
+          resultsBox.appendChild(item);
+        });
+      })
+      .catch(() => {
+        resultsBox.innerHTML = '<div class="loc-result-item loc-result-empty">⚠️ Search failed — check your connection.</div>';
+      });
+  }
+
+  function selectResult(r) {
+    const lat = parseFloat(r.lat), lng = parseFloat(r.lon);
+    const name = shortName(r.display_name);
+    map.setView([lat, lng], 15);
+    placePin(lat, lng);
+    setLatLon(lat, lng);
+    document.getElementById('location_name').value = name;
+    showConfirmed(name);
+    hideResults();
+    searchInput.value = '';
+  }
+
+  function showConfirmed(name) {
+    if (!name) return;
+    document.getElementById('location-confirmed-text').textContent = name;
+    document.getElementById('location-confirmed').style.display = 'flex';
+  }
+
+  function clearLocation() {
+    if (marker) { marker.remove(); marker = null; }
+    document.getElementById('location_lat').value = '';
+    document.getElementById('location_lon').value = '';
+    document.getElementById('location_name').value = '';
+    document.getElementById('location-confirmed').style.display = 'none';
+    map.setView([40.7128, -74.0060], 4);
+  }
+
+  function hideResults() {
+    resultsBox.style.display = 'none';
+    resultsBox.innerHTML = '';
+  }
+
+  // Click outside to close results
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#location-results') && !e.target.closest('#location-search') && !e.target.closest('#loc-search-btn'))
+      hideResults();
+  });
+
+  function locationEmoji(cls, type) {
+    const t = (type || '').toLowerCase();
+    const c = (cls  || '').toLowerCase();
+    if (t.includes('restaurant') || t.includes('cafe') || t.includes('bar') || t.includes('food')) return '🍽️';
+    if (t.includes('park') || t.includes('garden') || t.includes('nature')) return '🌳';
+    if (t.includes('cinema') || t.includes('theatre') || t.includes('arts')) return '🎭';
+    if (t.includes('museum') || t.includes('gallery')) return '🏛️';
+    if (t.includes('hotel') || t.includes('hostel')) return '🏨';
+    if (t.includes('beach') || t.includes('bay') || t.includes('lake')) return '🏖️';
+    if (c === 'highway' || t.includes('road') || t.includes('street')) return '🛣️';
+    if (c === 'boundary' || t.includes('city') || t.includes('town') || t.includes('suburb')) return '🏙️';
+    if (t.includes('shop') || t.includes('mall') || t.includes('store')) return '🛍️';
+    return '📍';
+  }
 
   // ── Image preview & delete helpers ──────────────────────────────────────────
   function previewImages(input) {
