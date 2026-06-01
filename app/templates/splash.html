@@ -19,116 +19,75 @@
       <span>💕</span><span>❤️</span><span>💗</span>
     </div>
 
-    <!-- Hero graphic -->
+    <!-- Hero graphic: geeky terminal window -->
     <div class="splash-graphic">
-      <svg viewBox="0 0 420 260" xmlns="http://www.w3.org/2000/svg" class="splash-svg">
+      <svg viewBox="0 0 440 250" xmlns="http://www.w3.org/2000/svg" class="splash-svg">
+        <!-- Terminal window shell -->
+        <rect x="10" y="10" width="420" height="230" rx="10" fill="#1e1e2e" filter="url(#shadow)"/>
+
+        <!-- Title bar -->
+        <rect x="10" y="10" width="420" height="34" rx="10" fill="#2a2a3e"/>
+        <rect x="10" y="30"  width="420" height="14" fill="#2a2a3e"/>
+
+        <!-- Traffic-light dots -->
+        <circle cx="34"  cy="27" r="7" fill="#FF5F57"/>
+        <circle cx="56"  cy="27" r="7" fill="#FFBD2E"/>
+        <circle cx="78"  cy="27" r="7" fill="#28C840"/>
+
+        <!-- Title bar text -->
+        <text x="220" y="32" font-family="'Courier New',Courier,monospace" font-size="11"
+              fill="#8888bb" text-anchor="middle" letter-spacing="1">love.exe  —  terminal  v2.❤️.0</text>
+
+        <!-- Scanline overlay (decorative) -->
+        <rect x="10" y="44" width="420" height="196" rx="0" fill="url(#scanlines)" opacity="0.04"/>
+
+        <!-- Line 1 -->
+        <text x="28" y="68" font-family="'Courier New',Courier,monospace" font-size="12" fill="#FF6B9D">$</text>
+        <text x="42" y="68" font-family="'Courier New',Courier,monospace" font-size="12" fill="#cdd6f4"> ./date-abase --init-relationship</text>
+
+        <!-- Line 2 -->
+        <text x="28" y="90" font-family="'Courier New',Courier,monospace" font-size="12" fill="#6c7086">▶</text>
+        <text x="42" y="90" font-family="'Courier New',Courier,monospace" font-size="12" fill="#a6e3a1"> Scanning for chemistry</text>
+        <text x="296" y="90" font-family="'Courier New',Courier,monospace" font-size="12" fill="#a6e3a1">........</text>
+        <text x="366" y="90" font-family="'Courier New',Courier,monospace" font-size="12" fill="#a6e3a1"> ✓</text>
+
+        <!-- Line 3 -->
+        <text x="28" y="111" font-family="'Courier New',Courier,monospace" font-size="12" fill="#6c7086">▶</text>
+        <text x="42" y="111" font-family="'Courier New',Courier,monospace" font-size="12" fill="#cdd6f4"> Compatibility: </text>
+        <text x="172" y="111" font-family="'Courier New',Courier,monospace" font-size="12" fill="#FF6B9D">0xFF%</text>
+        <text x="220" y="111" font-family="'Courier New',Courier,monospace" font-size="12" fill="#cdd6f4">  [</text>
+        <text x="242" y="111" font-family="'Courier New',Courier,monospace" font-size="12" fill="#f38ba8">████████████</text>
+        <text x="338" y="111" font-family="'Courier New',Courier,monospace" font-size="12" fill="#cdd6f4">]</text>
+
+        <!-- Line 4: error line (funny) -->
+        <text x="28" y="132" font-family="'Courier New',Courier,monospace" font-size="12" fill="#f38ba8">!</text>
+        <text x="42" y="132" font-family="'Courier New',Courier,monospace" font-size="12" fill="#f38ba8"> ERR: SmileOverflowException — cannot stop smiling</text>
+
+        <!-- Line 5 -->
+        <text x="28" y="153" font-family="'Courier New',Courier,monospace" font-size="12" fill="#6c7086">▶</text>
+        <text x="42" y="153" font-family="'Courier New',Courier,monospace" font-size="12" fill="#cdd6f4"> git commit -am </text>
+        <text x="172" y="153" font-family="'Courier New',Courier,monospace" font-size="12" fill="#a6e3a1">"💕 add: us"</text>
+        <text x="280" y="153" font-family="'Courier New',Courier,monospace" font-size="12" fill="#a6e3a1">  ✓ 1 heart changed</text>
+
+        <!-- Line 6 -->
+        <text x="28" y="174" font-family="'Courier New',Courier,monospace" font-size="12" fill="#6c7086">▶</text>
+        <text x="42" y="174" font-family="'Courier New',Courier,monospace" font-size="12" fill="#cdd6f4"> git push origin </text>
+        <text x="178" y="174" font-family="'Courier New',Courier,monospace" font-size="12" fill="#FF6B9D">main</text>
+        <text x="218" y="174" font-family="'Courier New',Courier,monospace" font-size="12" fill="#cdd6f4"> --force  </text>
+        <text x="296" y="174" font-family="'Courier New',Courier,monospace" font-size="12" fill="#a6e3a1"> ✓ No going back. 💕</text>
+
+        <!-- Line 7: prompt + blinking cursor -->
+        <text x="28" y="218" font-family="'Courier New',Courier,monospace" font-size="12" fill="#FF6B9D">$</text>
+        <rect x="42" y="205" width="9" height="14" fill="#FF6B9D" rx="1" opacity="0.9">
+          <animate attributeName="opacity" values="0.9;0;0.9" dur="1.1s" repeatCount="indefinite"/>
+        </rect>
+
+        <!-- Drop shadow filter -->
         <defs>
-          <!-- Left heart gradient (pink) -->
-          <radialGradient id="heartL" cx="40%" cy="35%" r="60%">
-            <stop offset="0%"   stop-color="#FF8FA3"/>
-            <stop offset="100%" stop-color="#C9184A"/>
-          </radialGradient>
-          <!-- Right heart gradient (rose) -->
-          <radialGradient id="heartR" cx="60%" cy="35%" r="60%">
-            <stop offset="0%"   stop-color="#FFB3C1"/>
-            <stop offset="100%" stop-color="#FF4D6D"/>
-          </radialGradient>
-          <!-- Explosion burst gradient -->
-          <radialGradient id="burst" cx="50%" cy="50%" r="50%">
-            <stop offset="0%"   stop-color="#FFE0EA" stop-opacity="1"/>
-            <stop offset="100%" stop-color="#FFE0EA" stop-opacity="0"/>
-          </radialGradient>
+          <filter id="shadow" x="-5%" y="-5%" width="110%" height="120%">
+            <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#C9184A" flood-opacity="0.18"/>
+          </filter>
         </defs>
-
-        <!-- Speed lines coming from left -->
-        <line x1="10"  y1="118" x2="98"  y2="122" stroke="#FFB3C1" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
-        <line x1="18"  y1="100" x2="95"  y2="108" stroke="#FFB3C1" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
-        <line x1="18"  y1="138" x2="95"  y2="134" stroke="#FFB3C1" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
-        <line x1="28"  y1="82"  x2="96"  y2="96"  stroke="#FFB3C1" stroke-width="1"   stroke-linecap="round" opacity="0.25"/>
-        <line x1="28"  y1="156" x2="96"  y2="148" stroke="#FFB3C1" stroke-width="1"   stroke-linecap="round" opacity="0.25"/>
-
-        <!-- Speed lines coming from right -->
-        <line x1="410" y1="118" x2="322" y2="122" stroke="#FFB3C1" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
-        <line x1="402" y1="100" x2="325" y2="108" stroke="#FFB3C1" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
-        <line x1="402" y1="138" x2="325" y2="134" stroke="#FFB3C1" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
-        <line x1="392" y1="82"  x2="324" y2="96"  stroke="#FFB3C1" stroke-width="1"   stroke-linecap="round" opacity="0.25"/>
-        <line x1="392" y1="156" x2="324" y2="148" stroke="#FFB3C1" stroke-width="1"   stroke-linecap="round" opacity="0.25"/>
-
-        <!-- Impact burst circle -->
-        <circle cx="210" cy="122" r="62" fill="url(#burst)"/>
-
-        <!-- Impact star spikes -->
-        <g transform="translate(210,122)" stroke="#FF6B9D" stroke-width="2" stroke-linecap="round" opacity="0.7">
-          <line x1="0" y1="-68" x2="0"  y2="-52"/>
-          <line x1="0" y1=" 68" x2="0"  y2=" 52"/>
-          <line x1="-68" y1="0" x2="-52" y2="0"/>
-          <line x1=" 68" y1="0" x2=" 52" y2="0"/>
-          <line x1="-48" y1="-48" x2="-37" y2="-37"/>
-          <line x1=" 48" y1="-48" x2=" 37" y2="-37"/>
-          <line x1="-48" y1=" 48" x2="-37" y2=" 37"/>
-          <line x1=" 48" y1=" 48" x2=" 37" y2=" 37"/>
-        </g>
-
-        <!-- LEFT heart — flying in from left, slightly tilted -->
-        <g transform="translate(108,122) rotate(-18) scale(1.08)" class="heart-left">
-          <path d="M0,-28 C0,-28 -52,-28 -52,14 C-52,42 0,70 0,70 C0,70 52,42 52,14 C52,-28 0,-28 0,-28 Z"
-                fill="url(#heartL)" stroke="#C9184A" stroke-width="2"/>
-          <!-- Cute face -->
-          <circle cx="-14" cy="8"  r="4.5" fill="#590D22"/>
-          <circle cx=" 14" cy="8"  r="4.5" fill="#590D22"/>
-          <circle cx="-12" cy="6"  r="1.5" fill="white"/>
-          <circle cx=" 16" cy="6"  r="1.5" fill="white"/>
-          <path d="M-12,28 Q0,40 12,28" stroke="#590D22" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-          <!-- Blush -->
-          <ellipse cx="-24" cy="22" rx="7" ry="4" fill="#FF8FA3" opacity="0.5"/>
-          <ellipse cx=" 24" cy="22" rx="7" ry="4" fill="#FF8FA3" opacity="0.5"/>
-          <!-- Motion squish lines on right side -->
-          <line x1="42" y1="-8"  x2="56" y2="-8"  stroke="#C9184A" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
-          <line x1="46" y1="4"   x2="60" y2="4"    stroke="#C9184A" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
-          <line x1="44" y1="16"  x2="58" y2="16"   stroke="#C9184A" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
-        </g>
-
-        <!-- RIGHT heart — flying in from right, slightly tilted other way -->
-        <g transform="translate(312,122) rotate(18) scale(1.08)" class="heart-right">
-          <path d="M0,-28 C0,-28 -52,-28 -52,14 C-52,42 0,70 0,70 C0,70 52,42 52,14 C52,-28 0,-28 0,-28 Z"
-                fill="url(#heartR)" stroke="#FF4D6D" stroke-width="2"/>
-          <!-- Cute face -->
-          <circle cx="-14" cy="8"  r="4.5" fill="#590D22"/>
-          <circle cx=" 14" cy="8"  r="4.5" fill="#590D22"/>
-          <circle cx="-12" cy="6"  r="1.5" fill="white"/>
-          <circle cx=" 16" cy="6"  r="1.5" fill="white"/>
-          <path d="M-12,28 Q0,40 12,28" stroke="#590D22" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-          <!-- Blush -->
-          <ellipse cx="-24" cy="22" rx="7" ry="4" fill="#FFB3C1" opacity="0.5"/>
-          <ellipse cx=" 24" cy="22" rx="7" ry="4" fill="#FFB3C1" opacity="0.5"/>
-          <!-- Motion squish lines on left side -->
-          <line x1="-42" y1="-8"  x2="-56" y2="-8"  stroke="#FF4D6D" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
-          <line x1="-46" y1="4"   x2="-60" y2="4"    stroke="#FF4D6D" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
-          <line x1="-44" y1="16"  x2="-58" y2="16"   stroke="#FF4D6D" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
-        </g>
-
-        <!-- Flying debris: mini hearts and stars from collision -->
-        <text x="188" y="42"  font-size="13" opacity="0.85" transform="rotate(-20,188,42)">💥</text>
-        <text x="216" y="36"  font-size="10" opacity="0.8"  transform="rotate(10,216,36)">✨</text>
-        <text x="168" y="58"  font-size="9"  opacity="0.75" transform="rotate(-30,168,58)">💗</text>
-        <text x="234" y="54"  font-size="9"  opacity="0.75" transform="rotate(25,234,54)">💗</text>
-        <text x="152" y="82"  font-size="8"  opacity="0.6"  transform="rotate(-15,152,82)">⭐</text>
-        <text x="254" y="78"  font-size="8"  opacity="0.6"  transform="rotate(15,254,78)">⭐</text>
-        <text x="200" y="195" font-size="8"  opacity="0.55" transform="rotate(5,200,195)">💕</text>
-        <text x="224" y="192" font-size="7"  opacity="0.5"  transform="rotate(-8,224,192)">💫</text>
-
-        <!-- BOOM label -->
-        <text x="210" y="116" font-family="Lato, sans-serif" font-size="22" font-weight="900"
-              fill="#C9184A" text-anchor="middle" letter-spacing="2"
-              transform="rotate(-8,210,116)" opacity="0.92">BOOM</text>
-        <text x="210" y="136" font-family="Lato, sans-serif" font-size="11" font-weight="700"
-              fill="#FF4D6D" text-anchor="middle" font-style="italic" opacity="0.8">💕 love at first collision 💕</text>
-
-        <!-- Bottom tagline -->
-        <text x="210" y="248" font-family="Playfair Display, serif" font-size="12"
-              fill="#C9184A" text-anchor="middle" font-style="italic" opacity="0.85">
-          When two hearts can't help but crash into each other.
-        </text>
       </svg>
     </div>
 
@@ -136,9 +95,9 @@
     <h1 class="splash-title">Date-abase</h1>
     <p class="splash-subtitle">A very scientific record of romance, engineered with love</p>
     <p class="splash-tagline">
-      <span class="badge-fun">💥 Collision Certified™</span>
-      <span class="badge-fun">📋 Love Logged</span>
-      <span class="badge-fun">💕 Chemistry: 100%</span>
+      <span class="badge-fun">💾 git push --love</span>
+      <span class="badge-fun">🔬 O(1) chemistry</span>
+      <span class="badge-fun">💕 NULL → FULL</span>
     </p>
 
     <!-- Login form -->

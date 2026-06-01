@@ -17,7 +17,8 @@
 {% endif %}
 
 <div class="form-card">
-  <form method="post" action="{% if entry %}/dates/{{ entry.id }}/edit{% else %}/dates/new{% endif %}" id="date-form">
+  <form method="post" action="{% if entry %}/dates/{{ entry.id }}/edit{% else %}/dates/new{% endif %}"
+        id="date-form" enctype="multipart/form-data">
 
     <!-- Title -->
     <div class="form-section">
@@ -108,6 +109,46 @@
       </div>
     </div>
 
+    <!-- Photos -->
+    <div class="form-section">
+      <h3 class="form-section-title">📸 Photos</h3>
+
+      {% if entry and entry.images %}
+      <div class="existing-images">
+        <p class="form-hint" style="margin-bottom:0.75rem;">Existing photos — check the box to remove one:</p>
+        <div class="image-thumb-grid" id="existing-grid">
+          {% for img in entry.images %}
+          <div class="image-thumb-item" id="img-wrap-{{ img.id }}">
+            <img src="/uploads/{{ img.filename }}" alt="Date photo" class="image-thumb"/>
+            <label class="image-thumb-delete">
+              <input type="checkbox" name="delete_images_check" value="{{ img.id }}"
+                     onchange="toggleDeleteImage({{ img.id }}, this)"> 🗑️ Remove
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <input type="hidden" name="delete_images" id="delete_images" value=""/>
+      {% else %}
+      <input type="hidden" name="delete_images" id="delete_images" value=""/>
+      {% endif %}
+
+      <div class="form-group" style="margin-top:1rem;">
+        <label for="images">Add Photos</label>
+        <div class="upload-drop-zone" id="drop-zone">
+          <input type="file" id="images" name="images" multiple
+                 accept="image/jpeg,image/png,image/gif,image/webp"
+                 onchange="previewImages(this)" class="upload-file-input"/>
+          <div class="upload-drop-label" id="drop-label">
+            <span class="upload-icon">📷</span>
+            <span>Click to choose photos, or drag &amp; drop here</span>
+            <span class="form-hint">JPEG, PNG, GIF, WebP · max 15 MB each</span>
+          </div>
+        </div>
+        <div class="image-preview-row" id="new-preview-row"></div>
+      </div>
+    </div>
+
     <!-- Submit -->
     <div class="form-actions">
       <button type="submit" class="btn btn-primary btn-lg">
@@ -191,6 +232,60 @@
 
   document.getElementById('location-search').addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); searchLocation(); }
+  });
+
+  // ── Image preview & delete helpers ──────────────────────────────────────────
+  function previewImages(input) {
+    const row = document.getElementById('new-preview-row');
+    row.innerHTML = '';
+    Array.from(input.files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const wrap = document.createElement('div');
+        wrap.className = 'image-thumb-item';
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        img.className = 'image-thumb';
+        img.alt = file.name;
+        wrap.appendChild(img);
+        const name = document.createElement('span');
+        name.className = 'form-hint';
+        name.style.wordBreak = 'break-all';
+        name.textContent = file.name;
+        wrap.appendChild(name);
+        row.appendChild(wrap);
+      };
+      reader.readAsDataURL(file);
+    });
+    document.getElementById('drop-label').style.display = input.files.length ? 'none' : '';
+  }
+
+  function toggleDeleteImage(imgId, checkbox) {
+    const field = document.getElementById('delete_images');
+    let ids = field.value ? field.value.split(',').filter(Boolean) : [];
+    const wrap = document.getElementById('img-wrap-' + imgId);
+    if (checkbox.checked) {
+      ids.push(String(imgId));
+      wrap.classList.add('image-marked-delete');
+    } else {
+      ids = ids.filter(x => x !== String(imgId));
+      wrap.classList.remove('image-marked-delete');
+    }
+    field.value = ids.join(',');
+  }
+
+  // Drag-and-drop on the drop zone
+  const dropZone = document.getElementById('drop-zone');
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drop-zone-active'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drop-zone-active'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drop-zone-active');
+    const input = document.getElementById('images');
+    const dt = new DataTransfer();
+    Array.from(e.dataTransfer.files).forEach(f => dt.items.add(f));
+    input.files = dt.files;
+    previewImages(input);
   });
 </script>
 {% endblock %}

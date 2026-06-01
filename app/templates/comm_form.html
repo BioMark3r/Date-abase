@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}{% if entry %}Edit Comm{% else %}Log New Comm{% endif %} 📡 — Date-abase{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{% if entry %}✏️ Edit Comm Entry{% else %}📡 Log a New Comm{% endif %}</h1>
+  <p class="page-subtitle">{% if entry %}Update this communication entry{% else %}Because even a single text message can change everything{% endif %}</p>
+</div>
+
+{% if error %}
+<div class="alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="form-card">
+  <form method="post" action="{% if entry %}/comms/{{ entry.id }}/edit{% else %}/comms/new{% endif %}">
+
+    <div class="form-section">
+      <h3 class="form-section-title">📡 Communication Details</h3>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="comm_datetime">Date &amp; Time <span class="required">*</span></label>
+          <input type="datetime-local" id="comm_datetime" name="comm_datetime" class="form-input"
+            value="{{ entry.comm_datetime.strftime('%Y-%m-%dT%H:%M') if entry and entry.comm_datetime else '' }}"
+            required />
+        </div>
+        <div class="form-group">
+          <label for="comm_type">Type <span class="required">*</span></label>
+          <select id="comm_type" name="comm_type" class="form-input" required>
+            {% for emoji, label in comm_types %}
+            <option value="{{ label }}"
+              {% if entry and entry.comm_type == label %}selected{% endif %}>
+              {{ emoji }} {{ label }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="description">What happened? <span class="required">*</span></label>
+        <textarea id="description" name="description" class="form-textarea" rows="5"
+          placeholder="Describe the communication... the message, the call, the moment. Every byte of data counts."
+          required>{{ entry.description if entry and entry.description else '' }}</textarea>
+        <span class="form-hint">Be as detailed as future-you will appreciate</span>
+      </div>
+    </div>
+
+    <!-- Type reference card -->
+    <div class="form-section" style="background: var(--pink-pale); border-radius: var(--radius); padding: 1.25rem;">
+      <h3 class="form-section-title" style="margin-bottom: 0.75rem;">📋 Comm Type Reference</h3>
+      <div class="comm-type-grid">
+        {% for emoji, label in comm_types %}
+        <div class="comm-type-chip">{{ emoji }} {{ label }}</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary btn-lg">
+        {% if entry %}💾 Save Changes{% else %}📡 Log This Comm{% endif %}
+      </button>
+      <a href="/comms" class="btn btn-ghost">Cancel</a>
+    </div>
+
+  </form>
+</div>
+{% endblock %}

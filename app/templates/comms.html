@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Log Comms 📡 — Date-abase{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>📡 Communications Log</h1>
+  <p class="page-subtitle">Every message, call, and moment that led here — version-controlled for posterity</p>
+</div>
+
+<div class="action-bar">
+  <a href="/comms/new" class="btn btn-primary">➕ Log New Comm</a>
+  <span class="comm-count-badge">
+    <code>{{ comms | length }}</code> entries &nbsp;·&nbsp;
+    <code>{{ '%X' % (comms | length) }} <small>hex</small></code>
+  </span>
+</div>
+
+{% if comms %}
+<div class="timeline">
+  {% for entry in comms %}
+  {% set type_info = comm_types | selectattr(1, 'equalto', entry.comm_type) | list %}
+  {% set emoji = type_info[0][0] if type_info else '📝' %}
+
+  <div class="timeline-item">
+    <!-- Spine connector -->
+    <div class="timeline-spine">
+      <div class="timeline-dot">{{ emoji }}</div>
+      {% if not loop.last %}<div class="timeline-line"></div>{% endif %}
+    </div>
+
+    <!-- Card -->
+    <div class="timeline-card">
+      <div class="timeline-card-header">
+        <div class="timeline-type-badge">{{ emoji }} {{ entry.comm_type }}</div>
+        <div class="timeline-card-meta">
+          <time>{{ entry.comm_datetime.strftime('%b %d, %Y · %-I:%M %p') }}</time>
+          <span class="hex-badge" title="Entry #{{ loop.index }}">{{ loop.index | hex_idx }}</span>
+        </div>
+      </div>
+      <p class="timeline-description">{{ entry.description }}</p>
+      <div class="timeline-card-footer">
+        <a href="/comms/{{ entry.id }}/edit" class="btn btn-sm btn-outline">✏️ Edit</a>
+        <form method="post" action="/comms/{{ entry.id }}/delete" style="display:inline;"
+              onsubmit="return confirm('Delete this comm? 💔')">
+          <button type="submit" class="btn btn-sm btn-danger">🗑️ Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="empty-state">
+  <div class="empty-graphic">📡</div>
+  <h2>No comms logged yet!</h2>
+  <p>Every love story starts with a first message. Log it before you forget the timestamp.</p>
+  <a href="/comms/new" class="btn btn-primary btn-lg">Log First Comm ➕</a>
+</div>
+{% endif %}
+
+{% endblock %}

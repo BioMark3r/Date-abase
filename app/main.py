@@ -1,29 +1,57 @@
 import os
 import json
 import io
-from datetime import datetime, timezone
+import uuid
+import shutil
+from datetime import datetime
+from pathlib import Path
+from typing import List
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from .database import engine, get_db, Base
-from .models import DateEntry
+from .models import DateEntry, DateImage, CommEntry
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Date-abase 💕")
 
-SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-love-key-change-me")
+SECRET_KEY      = os.getenv("SECRET_KEY",      "super-secret-love-key-change-me")
 SHARED_PASSWORD = os.getenv("SHARED_PASSWORD", "lovebirds")
+UPLOAD_DIR      = Path(os.getenv("UPLOAD_DIR", "./data/uploads"))
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic"}
+MAX_IMAGE_BYTES    = 15 * 1024 * 1024  # 15 MB
 
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, max_age=86400)
+app.mount("/static",  StaticFiles(directory="app/static"),   name="static")
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
+templates.env.filters["hex_idx"] = lambda n: f"0x{n:X}"   # 1→0x1  15→0xF  16→0x10
 
+# ── Comm type definitions ─────────────────────────────────────────────────────
+COMM_TYPES = [
+    ("💝", "First Ask Out"),
+    ("📱", "Text Message"),
+    ("📞", "Phone Call"),
+    ("💌", "DM / Social Media"),
+    ("🤝", "In-Person Chat"),
+    ("📧", "Email"),
+    ("🎯", "Made It Official"),
+    ("🌟", "Special Moment"),
+    ("🎉", "Milestone"),
+    ("💔", "The Talk"),
+    ("📝", "Other"),
+]
+COMM_TYPE_LABELS = {label: emoji for emoji, label in COMM_TYPES}
+
+# ── Height oracle ideas ───────────────────────────────────────────────────────
 HEIGHT_IDEAS = [
     ("The Optimal Romance Angle™", "Lean in at exactly θ = tan⁻¹(14/hinge_magic) ≈ 23°. Science has spoken. The door hinge approves."),
     ("The Forehead Kiss Protocol", "He bends 23 degrees. She gets a forehead kiss. Universe achieves perfect equilibrium. Repeat daily."),
@@ -48,10 +76,25 @@ HEIGHT_IDEAS = [
 ]
 
 
-def require_auth(request: Request):
-    if not request.session.get("authenticated"):
-        return False
-    return True
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def require_auth(request: Request) -> bool:
+    return bool(request.session.get("authenticated"))
+
+
+async def save_upload(file: UploadFile) -> str | None:
+    """Save an uploaded image; returns stored filename or None if invalid."""
+    if not file or not file.filename:
+        return None
+    ext = Path(file.filename).suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        return None
+    data = await file.read()
+    if len(data) > MAX_IMAGE_BYTES:
+        return None
+    fname = f"{uuid.uuid4()}{ext}"
+    (UPLOAD_DIR / fname).write_bytes(data)
+    return fname
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -68,7 +111,10 @@ async def login(request: Request, password: str = Form(...)):
     if password == SHARED_PASSWORD:
         request.session["authenticated"] = True
         return RedirectResponse("/dashboard", status_code=302)
-    return templates.TemplateResponse("splash.html", {"request": request, "error": "Wrong password, babe. Try again. 💔"})
+    return templates.TemplateResponse("splash.html", {
+        "request": request,
+        "error": "Wrong password, babe. Try again. 💔",
+    })
 
 
 @app.get("/logout")
@@ -85,9 +131,6 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse("/", status_code=302)
     dates = db.query(DateEntry).order_by(DateEntry.date_datetime.desc()).all()
 
-    # ── Compute stats ──────────────────────────────────────────────────────────
-    total_dates = len(dates)
-
     total_minutes = sum(d.duration_minutes for d in dates if d.duration_minutes)
     if total_minutes >= 60:
         time_together = f"{total_minutes // 60}h {total_minutes % 60}m"
@@ -96,33 +139,28 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     else:
         time_together = "—"
 
-    # Days since the most recent date (dates are sorted desc so first = latest)
     if dates:
-        latest = dates[0].date_datetime
-        days_since = (datetime.now() - latest).days
-        if days_since == 0:
-            days_since_label = "Today 💕"
-        elif days_since == 1:
-            days_since_label = "Yesterday"
-        else:
-            days_since_label = f"{days_since} days ago"
+        days_since = (datetime.now() - dates[0].date_datetime).days
+        days_since_label = (
+            "Today 💕" if days_since == 0
+            else "Yesterday" if days_since == 1
+            else f"{days_since} days ago"
+        )
     else:
         days_since_label = "—"
 
     ratings = [d.rating for d in dates if d.rating]
     avg_rating = round(sum(ratings) / len(ratings), 1) if ratings else None
 
-    stats = {
-        "total_dates": total_dates,
-        "time_together": time_together,
-        "days_since_label": days_since_label,
-        "avg_rating": avg_rating,
-    }
-
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "dates": dates,
-        "stats": stats,
+        "stats": {
+            "total_dates":    len(dates),
+            "time_together":  time_together,
+            "days_since_label": days_since_label,
+            "avg_rating":     avg_rating,
+        },
     })
 
 
@@ -132,22 +170,25 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
 async def new_date_form(request: Request):
     if not require_auth(request):
         return RedirectResponse("/", status_code=302)
-    return templates.TemplateResponse("date_form.html", {"request": request, "entry": None, "error": None})
+    return templates.TemplateResponse("date_form.html", {
+        "request": request, "entry": None, "error": None,
+    })
 
 
 @app.post("/dates/new")
 async def create_date(
     request: Request,
-    title: str = Form(...),
-    pre_date_activities: str = Form(""),
-    date_datetime: str = Form(...),
-    duration_minutes: str = Form(""),
-    location_name: str = Form(""),
-    location_lat: str = Form(""),
-    location_lon: str = Form(""),
-    what_we_did: str = Form(""),
-    notes: str = Form(""),
-    rating: int = Form(5),
+    title:               str          = Form(...),
+    pre_date_activities: str          = Form(""),
+    date_datetime:       str          = Form(...),
+    duration_minutes:    str          = Form(""),
+    location_name:       str          = Form(""),
+    location_lat:        str          = Form(""),
+    location_lon:        str          = Form(""),
+    what_we_did:         str          = Form(""),
+    notes:               str          = Form(""),
+    rating:              int          = Form(5),
+    images:              List[UploadFile] = File(default=[]),
     db: Session = Depends(get_db),
 ):
     if not require_auth(request):
@@ -157,7 +198,7 @@ async def create_date(
     except ValueError:
         return templates.TemplateResponse("date_form.html", {
             "request": request, "entry": None,
-            "error": "Invalid date format. Let's try that again! 📅"
+            "error": "Invalid date format. 📅",
         })
 
     entry = DateEntry(
@@ -175,6 +216,13 @@ async def create_date(
     db.add(entry)
     db.commit()
     db.refresh(entry)
+
+    for img_file in images:
+        fname = await save_upload(img_file)
+        if fname:
+            db.add(DateImage(date_id=entry.id, filename=fname))
+    db.commit()
+
     return RedirectResponse(f"/dates/{entry.id}", status_code=302)
 
 
@@ -182,7 +230,12 @@ async def create_date(
 async def view_date(request: Request, entry_id: int, db: Session = Depends(get_db)):
     if not require_auth(request):
         return RedirectResponse("/", status_code=302)
-    entry = db.query(DateEntry).filter(DateEntry.id == entry_id).first()
+    entry = (
+        db.query(DateEntry)
+        .options(joinedload(DateEntry.images))
+        .filter(DateEntry.id == entry_id)
+        .first()
+    )
     if not entry:
         raise HTTPException(status_code=404, detail="Date not found 💔")
     return templates.TemplateResponse("date_detail.html", {"request": request, "entry": entry})
@@ -192,51 +245,80 @@ async def view_date(request: Request, entry_id: int, db: Session = Depends(get_d
 async def edit_date_form(request: Request, entry_id: int, db: Session = Depends(get_db)):
     if not require_auth(request):
         return RedirectResponse("/", status_code=302)
-    entry = db.query(DateEntry).filter(DateEntry.id == entry_id).first()
+    entry = (
+        db.query(DateEntry)
+        .options(joinedload(DateEntry.images))
+        .filter(DateEntry.id == entry_id)
+        .first()
+    )
     if not entry:
         raise HTTPException(status_code=404, detail="Date not found 💔")
-    return templates.TemplateResponse("date_form.html", {"request": request, "entry": entry, "error": None})
+    return templates.TemplateResponse("date_form.html", {
+        "request": request, "entry": entry, "error": None,
+    })
 
 
 @app.post("/dates/{entry_id}/edit")
 async def update_date(
     request: Request,
-    entry_id: int,
-    title: str = Form(...),
-    pre_date_activities: str = Form(""),
-    date_datetime: str = Form(...),
-    duration_minutes: str = Form(""),
-    location_name: str = Form(""),
-    location_lat: str = Form(""),
-    location_lon: str = Form(""),
-    what_we_did: str = Form(""),
-    notes: str = Form(""),
-    rating: int = Form(5),
+    entry_id:            int,
+    title:               str          = Form(...),
+    pre_date_activities: str          = Form(""),
+    date_datetime:       str          = Form(...),
+    duration_minutes:    str          = Form(""),
+    location_name:       str          = Form(""),
+    location_lat:        str          = Form(""),
+    location_lon:        str          = Form(""),
+    what_we_did:         str          = Form(""),
+    notes:               str          = Form(""),
+    rating:              int          = Form(5),
+    delete_images:       str          = Form(""),   # comma-separated image IDs
+    images:              List[UploadFile] = File(default=[]),
     db: Session = Depends(get_db),
 ):
     if not require_auth(request):
         return RedirectResponse("/", status_code=302)
-    entry = db.query(DateEntry).filter(DateEntry.id == entry_id).first()
+    entry = (
+        db.query(DateEntry)
+        .options(joinedload(DateEntry.images))
+        .filter(DateEntry.id == entry_id)
+        .first()
+    )
     if not entry:
         raise HTTPException(status_code=404, detail="Date not found 💔")
     try:
         dt = datetime.fromisoformat(date_datetime)
     except ValueError:
         return templates.TemplateResponse("date_form.html", {
-            "request": request, "entry": entry,
-            "error": "Invalid date format. 📅"
+            "request": request, "entry": entry, "error": "Invalid date format. 📅",
         })
 
-    entry.title = title
+    # Delete marked images
+    to_delete = [int(x) for x in delete_images.split(",") if x.strip().isdigit()]
+    for img_id in to_delete:
+        img = db.query(DateImage).filter(
+            DateImage.id == img_id, DateImage.date_id == entry_id
+        ).first()
+        if img:
+            (UPLOAD_DIR / img.filename).unlink(missing_ok=True)
+            db.delete(img)
+
+    # Save new uploads
+    for img_file in images:
+        fname = await save_upload(img_file)
+        if fname:
+            db.add(DateImage(date_id=entry.id, filename=fname))
+
+    entry.title               = title
     entry.pre_date_activities = pre_date_activities or None
-    entry.date_datetime = dt
-    entry.duration_minutes = int(duration_minutes) if duration_minutes else None
-    entry.location_name = location_name or None
-    entry.location_lat = float(location_lat) if location_lat else None
-    entry.location_lon = float(location_lon) if location_lon else None
-    entry.what_we_did = what_we_did or None
-    entry.notes = notes or None
-    entry.rating = rating
+    entry.date_datetime       = dt
+    entry.duration_minutes    = int(duration_minutes) if duration_minutes else None
+    entry.location_name       = location_name or None
+    entry.location_lat        = float(location_lat) if location_lat else None
+    entry.location_lon        = float(location_lon) if location_lon else None
+    entry.what_we_did         = what_we_did or None
+    entry.notes               = notes or None
+    entry.rating              = rating
     db.commit()
     return RedirectResponse(f"/dates/{entry_id}", status_code=302)
 
@@ -245,14 +327,116 @@ async def update_date(
 async def delete_date(request: Request, entry_id: int, db: Session = Depends(get_db)):
     if not require_auth(request):
         return RedirectResponse("/", status_code=302)
-    entry = db.query(DateEntry).filter(DateEntry.id == entry_id).first()
+    entry = (
+        db.query(DateEntry)
+        .options(joinedload(DateEntry.images))
+        .filter(DateEntry.id == entry_id)
+        .first()
+    )
     if entry:
+        for img in entry.images:
+            (UPLOAD_DIR / img.filename).unlink(missing_ok=True)
         db.delete(entry)
         db.commit()
     return RedirectResponse("/dashboard", status_code=302)
 
 
-# ── Magic 8-Ball ──────────────────────────────────────────────────────────────
+# ── Comms ─────────────────────────────────────────────────────────────────────
+
+@app.get("/comms", response_class=HTMLResponse)
+async def comms_list(request: Request, db: Session = Depends(get_db)):
+    if not require_auth(request):
+        return RedirectResponse("/", status_code=302)
+    comms = db.query(CommEntry).order_by(CommEntry.comm_datetime.desc()).all()
+    return templates.TemplateResponse("comms.html", {
+        "request": request, "comms": comms, "comm_types": COMM_TYPES,
+    })
+
+
+@app.get("/comms/new", response_class=HTMLResponse)
+async def new_comm_form(request: Request):
+    if not require_auth(request):
+        return RedirectResponse("/", status_code=302)
+    return templates.TemplateResponse("comm_form.html", {
+        "request": request, "entry": None, "error": None, "comm_types": COMM_TYPES,
+    })
+
+
+@app.post("/comms/new")
+async def create_comm(
+    request: Request,
+    comm_datetime: str  = Form(...),
+    comm_type:     str  = Form(...),
+    description:   str  = Form(...),
+    db: Session = Depends(get_db),
+):
+    if not require_auth(request):
+        return RedirectResponse("/", status_code=302)
+    try:
+        dt = datetime.fromisoformat(comm_datetime)
+    except ValueError:
+        return templates.TemplateResponse("comm_form.html", {
+            "request": request, "entry": None,
+            "error": "Invalid date format. 📅", "comm_types": COMM_TYPES,
+        })
+    entry = CommEntry(comm_datetime=dt, comm_type=comm_type, description=description)
+    db.add(entry)
+    db.commit()
+    return RedirectResponse("/comms", status_code=302)
+
+
+@app.get("/comms/{entry_id}/edit", response_class=HTMLResponse)
+async def edit_comm_form(request: Request, entry_id: int, db: Session = Depends(get_db)):
+    if not require_auth(request):
+        return RedirectResponse("/", status_code=302)
+    entry = db.query(CommEntry).filter(CommEntry.id == entry_id).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Comm not found 💔")
+    return templates.TemplateResponse("comm_form.html", {
+        "request": request, "entry": entry, "error": None, "comm_types": COMM_TYPES,
+    })
+
+
+@app.post("/comms/{entry_id}/edit")
+async def update_comm(
+    request: Request,
+    entry_id:      int,
+    comm_datetime: str = Form(...),
+    comm_type:     str = Form(...),
+    description:   str = Form(...),
+    db: Session = Depends(get_db),
+):
+    if not require_auth(request):
+        return RedirectResponse("/", status_code=302)
+    entry = db.query(CommEntry).filter(CommEntry.id == entry_id).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Comm not found 💔")
+    try:
+        dt = datetime.fromisoformat(comm_datetime)
+    except ValueError:
+        return templates.TemplateResponse("comm_form.html", {
+            "request": request, "entry": entry,
+            "error": "Invalid date format. 📅", "comm_types": COMM_TYPES,
+        })
+    entry.comm_datetime = dt
+    entry.comm_type     = comm_type
+    entry.description   = description
+    db.commit()
+    return RedirectResponse("/comms", status_code=302)
+
+
+@app.post("/comms/{entry_id}/delete")
+async def delete_comm(request: Request, entry_id: int, db: Session = Depends(get_db)):
+    if not require_auth(request):
+        return RedirectResponse("/", status_code=302)
+    entry = db.query(CommEntry).filter(CommEntry.id == entry_id).first()
+    if entry:
+        db.delete(entry)
+        db.commit()
+    return RedirectResponse("/comms", status_code=302)
+
+
+# ── Height Oracle ─────────────────────────────────────────────────────────────
 
 @app.get("/magic-ball", response_class=HTMLResponse)
 async def magic_ball(request: Request):
@@ -277,10 +461,12 @@ async def export_data(request: Request, db: Session = Depends(get_db)):
     if not require_auth(request):
         return RedirectResponse("/", status_code=302)
     dates = db.query(DateEntry).order_by(DateEntry.date_datetime).all()
+    comms = db.query(CommEntry).order_by(CommEntry.comm_datetime).all()
     data = {
         "export_date": datetime.now().isoformat(),
         "app": "Date-abase 💕",
         "dates": [d.to_dict() for d in dates],
+        "comms": [c.to_dict() for c in comms],
     }
     json_bytes = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
     return StreamingResponse(
@@ -291,16 +477,17 @@ async def export_data(request: Request, db: Session = Depends(get_db)):
 
 
 @app.post("/import")
-async def import_data(request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def import_data(
+    request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)
+):
     if not require_auth(request):
         return RedirectResponse("/", status_code=302)
     try:
-        contents = await file.read()
-        data = json.loads(contents)
-        imported = 0
+        data = json.loads(await file.read())
+        imported_dates = imported_comms = 0
         for item in data.get("dates", []):
             dt = datetime.fromisoformat(item["date_datetime"]) if item.get("date_datetime") else datetime.now()
-            entry = DateEntry(
+            db.add(DateEntry(
                 title=item.get("title", "Untitled Date"),
                 pre_date_activities=item.get("pre_date_activities"),
                 date_datetime=dt,
@@ -311,10 +498,20 @@ async def import_data(request: Request, file: UploadFile = File(...), db: Sessio
                 what_we_did=item.get("what_we_did"),
                 notes=item.get("notes"),
                 rating=item.get("rating", 5),
-            )
-            db.add(entry)
-            imported += 1
+            ))
+            imported_dates += 1
+        for item in data.get("comms", []):
+            dt = datetime.fromisoformat(item["comm_datetime"]) if item.get("comm_datetime") else datetime.now()
+            db.add(CommEntry(
+                comm_datetime=dt,
+                comm_type=item.get("comm_type", "Other"),
+                description=item.get("description", ""),
+            ))
+            imported_comms += 1
         db.commit()
-        return RedirectResponse(f"/dashboard?imported={imported}", status_code=302)
-    except Exception as e:
+        return RedirectResponse(
+            f"/dashboard?imported={imported_dates}&imported_comms={imported_comms}",
+            status_code=302,
+        )
+    except Exception:
         return RedirectResponse("/dashboard?import_error=1", status_code=302)

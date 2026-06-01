@@ -63,6 +63,19 @@
   </section>
   {% endif %}
 
+  {% if entry.images %}
+  <section class="detail-section">
+    <h2 class="detail-section-title">📸 Photos</h2>
+    <div class="photo-gallery">
+      {% for img in entry.images %}
+      <a href="/uploads/{{ img.filename }}" target="_blank" rel="noopener" class="photo-gallery-item">
+        <img src="/uploads/{{ img.filename }}" alt="Date photo {{ loop.index }}" loading="lazy"/>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
   {% if entry.location_lat and entry.location_lon %}
   <section class="detail-section">
     <h2 class="detail-section-title">📍 Where It Happened</h2>

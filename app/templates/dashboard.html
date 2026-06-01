@@ -84,7 +84,10 @@
       <div class="date-rating">
         {% for i in range(entry.rating or 5) %}❤️{% endfor %}
       </div>
-      <time class="date-when">{{ entry.date_datetime.strftime('%b %d, %Y') }}</time>
+      <div class="date-card-meta-right">
+        <span class="hex-badge" title="Date #{{ loop.index }}">{{ loop.index | hex_idx }}</span>
+        <time class="date-when">{{ entry.date_datetime.strftime('%b %d, %Y') }}</time>
+      </div>
     </div>
     <h2 class="date-card-title">
       <a href="/dates/{{ entry.id }}">{{ entry.title }}</a>
