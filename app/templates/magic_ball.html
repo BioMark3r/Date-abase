@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Height Oracle 🔮 — Date-abase{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>🔮 The Height Difference Oracle</h1>
+  <p class="page-subtitle">Consult the ancient wisdom of θ = tan⁻¹(14 / hinge_magic) ≈ 23°</p>
+</div>
+
+<div class="oracle-container">
+
+  <!-- Stats panel -->
+  <div class="oracle-stats">
+    <div class="oracle-stat">
+      <span class="oracle-stat-value">6'1"</span>
+      <span class="oracle-stat-label">His Height</span>
+    </div>
+    <div class="oracle-stat oracle-stat-diff">
+      <span class="oracle-stat-value">14"</span>
+      <span class="oracle-stat-label">The Gap™</span>
+    </div>
+    <div class="oracle-stat">
+      <span class="oracle-stat-value">4'11"</span>
+      <span class="oracle-stat-label">Her Height</span>
+    </div>
+  </div>
+
+  <!-- Crystal ball -->
+  <div class="ball-wrapper">
+    <div class="ball-glow"></div>
+    <div class="crystal-ball" id="crystal-ball" onclick="rollOracle()" title="Click to consult the oracle">
+      <div class="ball-inner">
+        <div class="ball-shine"></div>
+        <div class="ball-content" id="ball-content">
+          <span class="ball-prompt">Click to<br>consult the<br>oracle</span>
+        </div>
+      </div>
+    </div>
+    <div class="ball-base"></div>
+  </div>
+
+  <!-- Idea display -->
+  <div class="idea-card" id="idea-card">
+    <div class="idea-card-inner" id="idea-inner">
+      <div class="idea-placeholder">
+        <p>🔮 The oracle awaits your query...</p>
+        <p class="idea-hint">Click the crystal ball above to receive height-difference wisdom</p>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary btn-lg oracle-btn" onclick="rollOracle()" id="roll-btn">
+    🔮 Consult the Oracle
+  </button>
+
+  <!-- Formula card -->
+  <div class="formula-card">
+    <h3>📐 The Scientific Foundation</h3>
+    <div class="formula">θ = tan⁻¹( Height Diff / Hinge Magic ) ≈ 23°</div>
+    <p>Door Hinge Theory: Love is all about finding the right pivot point.</p>
+    <div class="specs-grid">
+      <div class="spec-item">✅ Heavy Duty</div>
+      <div class="spec-item">✅ Extra Tall</div>
+      <div class="spec-item">✅ Smooth Rotation</div>
+      <div class="spec-item">✅ Love Certified™</div>
+    </div>
+    <div class="spec-badge">RATED FOR DAILY USE &amp; DEEP FEELS 💕</div>
+  </div>
+
+  <!-- Bonus features -->
+  <div class="bonus-card">
+    <h3>🎁 Bonus Features (Always Included)</h3>
+    <ul class="bonus-list">
+      <li>✅ Forehead Kisses — <em>automatic</em></li>
+      <li>✅ Perfect Eye Contact — <em>with 23° lean</em></li>
+      <li>✅ Built-in Snuggle Access — <em>under the arm zone</em></li>
+      <li>✅ Human Chin Rest — <em>certified comfortable</em></li>
+      <li>✅ 100% Chemistry — <em>not scientifically deniable</em></li>
+    </ul>
+    <p class="bonus-priceless">PRICELESS 💕</p>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let isAnimating = false;
+
+  async function rollOracle() {
+    if (isAnimating) return;
+    isAnimating = true;
+
+    const ball = document.getElementById('crystal-ball');
+    const ballContent = document.getElementById('ball-content');
+    const ideaCard = document.getElementById('idea-card');
+    const ideaInner = document.getElementById('idea-inner');
+    const btn = document.getElementById('roll-btn');
+
+    // Shake animation
+    ball.classList.add('ball-shaking');
+    btn.disabled = true;
+    btn.textContent = '🔮 Consulting the ancients...';
+
+    ballContent.innerHTML = '<span class="ball-thinking">✨</span>';
+
+    await new Promise(r => setTimeout(r, 900));
+
+    try {
+      const res = await fetch('/api/magic-ball-idea');
+      const data = await res.json();
+
+      ball.classList.remove('ball-shaking');
+      ball.classList.add('ball-reveal');
+
+      ballContent.innerHTML = `<span class="ball-result-icon">💕</span>`;
+
+      ideaCard.classList.add('idea-revealed');
+      ideaInner.innerHTML = `
+        <div class="idea-content">
+          <h2 class="idea-title">${data.title}</h2>
+          <p class="idea-text">${data.idea}</p>
+          <div class="idea-hearts">❤️ ❤️ ❤️</div>
+        </div>
+      `;
+
+      setTimeout(() => ball.classList.remove('ball-reveal'), 600);
+    } catch(e) {
+      ballContent.innerHTML = '<span class="ball-prompt">Try again!<br>💕</span>';
+    }
+
+    btn.disabled = false;
+    btn.textContent = '🔮 Ask Again';
+    isAnimating = false;
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}{% if entry %}Edit Date{% else %}New Date{% endif %} 💕 — Date-abase{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{% if entry %}✏️ Edit This Date{% else %}➕ Log a New Date{% endif %}</h1>
+  <p class="page-subtitle">{% if entry %}Update the details of your adventure{% else %}Every great date deserves to be remembered forever (with GPS coordinates){% endif %}</p>
+</div>
+
+{% if error %}
+<div class="alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="form-card">
+  <form method="post" action="{% if entry %}/dates/{{ entry.id }}/edit{% else %}/dates/new{% endif %}" id="date-form">
+
+    <!-- Title -->
+    <div class="form-section">
+      <h3 class="form-section-title">📌 The Basics</h3>
+      <div class="form-group">
+        <label for="title">Date Title <span class="required">*</span></label>
+        <input type="text" id="title" name="title" class="form-input"
+          placeholder="e.g. Sunset Picnic at the Park"
+          value="{{ entry.title if entry else '' }}" required />
+        <span class="form-hint">Give this date a memorable name</span>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="date_datetime">Date &amp; Time <span class="required">*</span></label>
+          <input type="datetime-local" id="date_datetime" name="date_datetime" class="form-input"
+            value="{{ entry.date_datetime.strftime('%Y-%m-%dT%H:%M') if entry and entry.date_datetime else '' }}"
+            required />
+        </div>
+        <div class="form-group">
+          <label for="duration_minutes">Duration (minutes)</label>
+          <input type="number" id="duration_minutes" name="duration_minutes" class="form-input"
+            placeholder="e.g. 180"
+            value="{{ entry.duration_minutes if entry and entry.duration_minutes else '' }}"
+            min="1" max="10080" />
+          <span class="form-hint">How long did it last? (in minutes)</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="rating">Rating</label>
+        <div class="heart-rating" id="heart-rating">
+          {% for i in range(1, 6) %}
+          <input type="radio" name="rating" id="r{{ i }}" value="{{ i }}"
+            {% if entry and entry.rating == i %}checked{% elif not entry and i == 5 %}checked{% endif %} />
+          <label for="r{{ i }}" title="{{ i }} heart{% if i > 1 %}s{% endif %}">❤️</label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Pre-date -->
+    <div class="form-section">
+      <h3 class="form-section-title">🌅 Before the Date</h3>
+      <div class="form-group">
+        <label for="pre_date_activities">Pre-Date Activities</label>
+        <textarea id="pre_date_activities" name="pre_date_activities" class="form-textarea" rows="3"
+          placeholder="What did you do to get ready? Any nervous excitement? Outfit decisions? Height-compensating footwear choices?">{{ entry.pre_date_activities if entry and entry.pre_date_activities else '' }}</textarea>
+      </div>
+    </div>
+
+    <!-- Location -->
+    <div class="form-section">
+      <h3 class="form-section-title">📍 Where Did It Happen?</h3>
+      <div class="form-group">
+        <label for="location-search">Search Location</label>
+        <div class="location-search-row">
+          <input type="text" id="location-search" class="form-input"
+            placeholder="Search for a place... (e.g. Central Park, New York)" />
+          <button type="button" class="btn btn-outline" onclick="searchLocation()">🔍 Search</button>
+        </div>
+      </div>
+      <div id="map" class="map-container"></div>
+      <div class="form-group" style="margin-top: 0.75rem;">
+        <label for="location_name">Location Name</label>
+        <input type="text" id="location_name" name="location_name" class="form-input"
+          placeholder="e.g. The cute coffee shop on Main Street"
+          value="{{ entry.location_name if entry and entry.location_name else '' }}" />
+      </div>
+      <input type="hidden" id="location_lat" name="location_lat"
+        value="{{ entry.location_lat if entry and entry.location_lat else '' }}" />
+      <input type="hidden" id="location_lon" name="location_lon"
+        value="{{ entry.location_lon if entry and entry.location_lon else '' }}" />
+    </div>
+
+    <!-- What we did -->
+    <div class="form-section">
+      <h3 class="form-section-title">💝 What Happened?</h3>
+      <div class="form-group">
+        <label for="what_we_did">What We Did</label>
+        <textarea id="what_we_did" name="what_we_did" class="form-textarea" rows="5"
+          placeholder="Describe the date! The activities, the conversations, the magical moments, any engineering challenges overcome due to height differences...">{{ entry.what_we_did if entry and entry.what_we_did else '' }}</textarea>
+      </div>
+      <div class="form-group">
+        <label for="notes">Extra Notes / Funny Moments</label>
+        <textarea id="notes" name="notes" class="form-textarea" rows="3"
+          placeholder="Any bonus observations? Forehead kisses? Optimal hinge angles achieved? Secrets safe here.">{{ entry.notes if entry and entry.notes else '' }}</textarea>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary btn-lg">
+        {% if entry %}💾 Save Changes{% else %}💕 Log This Date{% endif %}
+      </button>
+      <a href="{% if entry %}/dates/{{ entry.id }}{% else %}/dashboard{% endif %}" class="btn btn-ghost">
+        Cancel
+      </a>
+    </div>
+
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  // Init map
+  const initLat = {{ entry.location_lat if entry and entry.location_lat else 40.7128 }};
+  const initLon = {{ entry.location_lon if entry and entry.location_lon else -74.0060 }};
+  const hasPin = {{ 'true' if entry and entry.location_lat else 'false' }};
+
+  const map = L.map('map').setView([initLat, initLon], hasPin ? 14 : 4);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+
+  const heartIcon = L.divIcon({ className: '', html: '<div style="font-size:28px;line-height:1;">📍</div>', iconSize: [28, 28], iconAnchor: [14, 28] });
+
+  let marker = null;
+  if (hasPin) {
+    marker = L.marker([initLat, initLon], { icon: heartIcon, draggable: true }).addTo(map);
+    marker.on('dragend', updateLatLon);
+  }
+
+  map.on('click', function(e) {
+    const { lat, lng } = e.latlng;
+    if (marker) marker.setLatLng([lat, lng]);
+    else marker = L.marker([lat, lng], { icon: heartIcon, draggable: true }).addTo(map);
+    marker.on('dragend', updateLatLon);
+    document.getElementById('location_lat').value = lat.toFixed(6);
+    document.getElementById('location_lon').value = lng.toFixed(6);
+    reverseGeocode(lat, lng);
+  });
+
+  function updateLatLon(e) {
+    const { lat, lng } = e.target.getLatLng();
+    document.getElementById('location_lat').value = lat.toFixed(6);
+    document.getElementById('location_lon').value = lng.toFixed(6);
+  }
+
+  function reverseGeocode(lat, lon) {
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.display_name && !document.getElementById('location_name').value) {
+          document.getElementById('location_name').value = d.display_name.split(',').slice(0,3).join(',').trim();
+        }
+      }).catch(() => {});
+  }
+
+  function searchLocation() {
+    const q = document.getElementById('location-search').value.trim();
+    if (!q) return;
+    fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`)
+      .then(r => r.json())
+      .then(results => {
+        if (!results.length) { alert('Location not found. Try a different search! 📍'); return; }
+        const { lat, lon, display_name } = results[0];
+        const latlng = [parseFloat(lat), parseFloat(lon)];
+        map.setView(latlng, 14);
+        if (marker) marker.setLatLng(latlng);
+        else marker = L.marker(latlng, { icon: heartIcon, draggable: true }).addTo(map);
+        marker.on('dragend', updateLatLon);
+        document.getElementById('location_lat').value = parseFloat(lat).toFixed(6);
+        document.getElementById('location_lon').value = parseFloat(lon).toFixed(6);
+        if (!document.getElementById('location_name').value)
+          document.getElementById('location_name').value = display_name.split(',').slice(0,3).join(',').trim();
+      }).catch(() => alert('Search failed. Check your connection! 🌐'));
+  }
+
+  document.getElementById('location-search').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); searchLocation(); }
+  });
+</script>
+{% endblock %}

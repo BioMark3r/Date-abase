@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Date-abase 💕{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css" />
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <nav class="navbar">
+    <a class="navbar-brand" href="/dashboard">💕 Date-abase</a>
+    <div class="navbar-links">
+      <a href="/dashboard">📋 Our Dates</a>
+      <a href="/dates/new">➕ New Date</a>
+      <a href="/magic-ball">🔮 Height Oracle</a>
+      <a href="/logout" class="logout-link">👋 Logout</a>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <p>💕 Made with love &amp; basic engineering principles &nbsp;·&nbsp; 14 inches of height difference, 100% chemistry</p>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

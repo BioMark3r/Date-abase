@@ -1,0 +1,15 @@
+services:
+  dateabase:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - dateabase_data:/data
+    environment:
+      - SECRET_KEY=change-me-to-something-romantic-and-secret
+      - SHARED_PASSWORD=lovebirds
+      - DATABASE_URL=sqlite:////data/dateabase.db
+    restart: unless-stopped
+
+volumes:
+  dateabase_data:

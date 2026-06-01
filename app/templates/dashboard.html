@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Our Dates 💕 — Date-abase{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>💕 Our Date History</h1>
+  <p class="page-subtitle">Every adventure, logged with love (and mild scientific rigor)</p>
+</div>
+
+<!-- Flash messages -->
+{% if request.query_params.get('imported') %}
+<div class="alert-success">
+  ✅ Successfully imported {{ request.query_params.get('imported') }} dates! Love is restored.
+</div>
+{% endif %}
+{% if request.query_params.get('import_error') %}
+<div class="alert-error">
+  ❌ Import failed. That JSON file might need a hug. Try again?
+</div>
+{% endif %}
+
+<!-- Action bar -->
+<div class="action-bar">
+  <a href="/dates/new" class="btn btn-primary">➕ Log a New Date</a>
+  <div class="action-bar-right">
+    <a href="/export" class="btn btn-outline">📤 Export JSON</a>
+    <label class="btn btn-outline" for="import-file">📥 Import JSON</label>
+    <form method="post" action="/import" enctype="multipart/form-data" style="display:none;" id="import-form">
+      <input type="file" id="import-file" name="file" accept=".json" onchange="document.getElementById('import-form').submit()"/>
+    </form>
+  </div>
+</div>
+
+<!-- Stats row -->
+{% if dates %}
+<div class="stats-row">
+  <div class="stat-card">
+    <span class="stat-number">{{ dates|length }}</span>
+    <span class="stat-label">Total Dates</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">
+      {% set total_mins = namespace(v=0) %}
+      {% for d in dates %}{% if d.duration_minutes %}{% set total_mins.v = total_mins.v + d.duration_minutes %}{% endif %}{% endfor %}
+      {% if total_mins.v >= 60 %}{{ (total_mins.v // 60) }}h {{ total_mins.v % 60 }}m{% else %}{{ total_mins.v }}m{% endif %}
+    </span>
+    <span class="stat-label">Time Together</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">
+      {% set avg = namespace(total=0, count=0) %}
+      {% for d in dates %}{% if d.rating %}{% set avg.total = avg.total + d.rating %}{% set avg.count = avg.count + 1 %}{% endif %}{% endfor %}
+      {% if avg.count > 0 %}{{ "%.1f"|format(avg.total / avg.count) }}{% else %}—{% endif %}
+    </span>
+    <span class="stat-label">Avg Rating</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">💕</span>
+    <span class="stat-label">Chemistry</span>
+  </div>
+</div>
+
+<!-- Date cards -->
+<div class="dates-grid">
+  {% for entry in dates %}
+  <article class="date-card">
+    <div class="date-card-header">
+      <div class="date-rating">
+        {% for i in range(entry.rating or 5) %}❤️{% endfor %}
+      </div>
+      <time class="date-when">{{ entry.date_datetime.strftime('%b %d, %Y') }}</time>
+    </div>
+    <h2 class="date-card-title">
+      <a href="/dates/{{ entry.id }}">{{ entry.title }}</a>
+    </h2>
+    {% if entry.location_name %}
+    <p class="date-location">📍 {{ entry.location_name }}</p>
+    {% endif %}
+    {% if entry.duration_minutes %}
+    <p class="date-duration">⏱️
+      {% if entry.duration_minutes >= 60 %}
+        {{ entry.duration_minutes // 60 }}h {{ entry.duration_minutes % 60 }}m
+      {% else %}
+        {{ entry.duration_minutes }}m
+      {% endif %}
+    </p>
+    {% endif %}
+    {% if entry.what_we_did %}
+    <p class="date-snippet">{{ entry.what_we_did[:120] }}{% if entry.what_we_did|length > 120 %}…{% endif %}</p>
+    {% endif %}
+    <div class="date-card-footer">
+      <a href="/dates/{{ entry.id }}" class="btn btn-sm btn-outline">View Details →</a>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+
+{% else %}
+<!-- Empty state -->
+<div class="empty-state">
+  <div class="empty-graphic">💕</div>
+  <h2>No dates logged yet!</h2>
+  <p>Your love story is waiting to be documented with scientific precision.</p>
+  <a href="/dates/new" class="btn btn-primary btn-lg">Log Your First Date ➕</a>
+</div>
+{% endif %}
+
+{% endblock %}

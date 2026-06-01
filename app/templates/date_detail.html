@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}{{ entry.title }} 💕 — Date-abase{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
+
+{% block content %}
+<div class="detail-header">
+  <div class="detail-header-top">
+    <a href="/dashboard" class="back-link">← Back to All Dates</a>
+    <div class="detail-actions">
+      <a href="/dates/{{ entry.id }}/edit" class="btn btn-outline">✏️ Edit</a>
+      <form method="post" action="/dates/{{ entry.id }}/delete" style="display:inline;"
+            onsubmit="return confirm('Delete this date entry? This cannot be undone. 💔')">
+        <button type="submit" class="btn btn-danger">🗑️ Delete</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="detail-rating">
+    {% for i in range(entry.rating or 5) %}❤️{% endfor %}
+  </div>
+  <h1 class="detail-title">{{ entry.title }}</h1>
+  <div class="detail-meta">
+    <span class="meta-chip">📅 {{ entry.date_datetime.strftime('%A, %B %d, %Y at %-I:%M %p') }}</span>
+    {% if entry.duration_minutes %}
+    <span class="meta-chip">⏱️
+      {% if entry.duration_minutes >= 60 %}
+        {{ entry.duration_minutes // 60 }}h {% if entry.duration_minutes % 60 %}{{ entry.duration_minutes % 60 }}m{% endif %}
+      {% else %}
+        {{ entry.duration_minutes }} minutes
+      {% endif %}
+    </span>
+    {% endif %}
+    {% if entry.location_name %}
+    <span class="meta-chip">📍 {{ entry.location_name }}</span>
+    {% endif %}
+  </div>
+</div>
+
+<div class="detail-body">
+
+  {% if entry.pre_date_activities %}
+  <section class="detail-section">
+    <h2 class="detail-section-title">🌅 Before the Date</h2>
+    <div class="detail-text">{{ entry.pre_date_activities }}</div>
+  </section>
+  {% endif %}
+
+  {% if entry.what_we_did %}
+  <section class="detail-section">
+    <h2 class="detail-section-title">💝 What We Did</h2>
+    <div class="detail-text">{{ entry.what_we_did }}</div>
+  </section>
+  {% endif %}
+
+  {% if entry.notes %}
+  <section class="detail-section">
+    <h2 class="detail-section-title">📝 Extra Notes & Funny Moments</h2>
+    <div class="detail-text detail-notes">{{ entry.notes }}</div>
+  </section>
+  {% endif %}
+
+  {% if entry.location_lat and entry.location_lon %}
+  <section class="detail-section">
+    <h2 class="detail-section-title">📍 Where It Happened</h2>
+    <div id="detail-map" class="map-container map-readonly"></div>
+    <p class="map-coords">
+      <a href="https://www.openstreetmap.org/?mlat={{ entry.location_lat }}&mlon={{ entry.location_lon }}&zoom=15"
+         target="_blank" rel="noopener" class="map-link">
+        🗺️ Open in OpenStreetMap
+      </a>
+    </p>
+  </section>
+  {% endif %}
+
+  <div class="detail-footer-meta">
+    <span>Logged on {{ entry.created_at.strftime('%B %d, %Y') if entry.created_at else 'unknown date' }}</span>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if entry.location_lat and entry.location_lon %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const map = L.map('detail-map', { zoomControl: true, dragging: true }).setView(
+    [{{ entry.location_lat }}, {{ entry.location_lon }}], 14
+  );
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+  const heartIcon = L.divIcon({ className: '', html: '<div style="font-size:28px;line-height:1;">📍</div>', iconSize: [28, 28], iconAnchor: [14, 28] });
+  L.marker([{{ entry.location_lat }}, {{ entry.location_lon }}], { icon: heartIcon })
+    .addTo(map)
+    .bindPopup('<strong>{{ entry.location_name or "Our date spot" }}</strong>')
+    .openPopup();
+</script>
+{% endif %}
+{% endblock %}
