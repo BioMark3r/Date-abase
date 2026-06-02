@@ -1657,12 +1657,12 @@ a:hover { color: var(--pink); }
    ROMANCE METER
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* Card — explicit row layout */
+/* Card — CSS grid so columns are explicit and can't stack */
 .rm-card {
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  column-gap: 2.5rem;
   align-items: center;
-  gap: 2.5rem;
   background: var(--white);
   border: 2px solid var(--pink-light);
   border-radius: var(--radius-lg);
@@ -1691,8 +1691,6 @@ a:hover { color: var(--pink); }
 
 /* Thermometer column */
 .rm-therm-col {
-  flex-shrink: 0;
-  width: 90px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1708,7 +1706,6 @@ a:hover { color: var(--pink); }
 
 /* Detail column */
 .rm-detail-col {
-  flex: 1;
   min-width: 0;
 }
 
@@ -1817,7 +1814,7 @@ a:hover { color: var(--pink); }
 
 /* Responsive — stack on mobile */
 @media (max-width: 600px) {
-  .rm-card { flex-direction: column; align-items: center; text-align: center; }
+  .rm-card { grid-template-columns: 1fr; justify-items: center; text-align: center; }
   .rm-factor-row { flex-wrap: wrap; }
   .rm-factor-label { min-width: unset; }
 }
