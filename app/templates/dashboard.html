@@ -20,6 +20,85 @@
 </div>
 {% endif %}
 
+<!-- Romance Meter -->
+{% if romance %}
+<div class="romance-meter-card romance-level-{{ romance.level }}">
+
+  <!-- Thermometer SVG -->
+  <div class="therm-wrap">
+    {% set fill_h = (romance.score / 100 * 120) | round | int %}
+    <svg viewBox="0 0 44 190" width="44" height="190" class="therm-svg" aria-label="Romance thermometer {{ romance.score }}%">
+      <defs>
+        <linearGradient id="therm-grad" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0%"   stop-color="#FF6B9D"/>
+          <stop offset="50%"  stop-color="#FF4D6D"/>
+          <stop offset="100%" stop-color="#C9184A"/>
+        </linearGradient>
+        <clipPath id="therm-tube-clip">
+          <rect x="15" y="8" width="14" height="122" rx="7"/>
+        </clipPath>
+      </defs>
+      <!-- Tick marks -->
+      {% for pct in [25, 50, 75, 100] %}
+      {% set y = 130 - (pct / 100 * 120) | round | int %}
+      <line x1="29" y1="{{ y }}" x2="35" y2="{{ y }}" stroke="#ddd" stroke-width="1.5"/>
+      <text x="37" y="{{ y + 4 }}" font-size="7" fill="#aaa" font-family="monospace">{{ pct }}</text>
+      {% endfor %}
+      <!-- Tube background -->
+      <rect x="15" y="8" width="14" height="122" rx="7" fill="#f3f3f3" stroke="#e0e0e0" stroke-width="1.5"/>
+      <!-- Mercury fill -->
+      <rect x="15" y="{{ 130 - fill_h }}" width="14" height="{{ fill_h }}"
+            fill="url(#therm-grad)" clip-path="url(#therm-tube-clip)"/>
+      <!-- Bulb connector -->
+      <rect x="15" y="126" width="14" height="14" fill="url(#therm-grad)"/>
+      <!-- Bulb -->
+      <circle cx="22" cy="162" r="18" fill="url(#therm-grad)" stroke="#e0e0e0" stroke-width="1.5"/>
+      <!-- Score in bulb -->
+      <text x="22" y="167" text-anchor="middle" font-size="10" font-weight="900"
+            fill="white" font-family="'Lato',sans-serif">{{ romance.score }}</text>
+    </svg>
+    <div class="therm-unit">°RM</div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="romance-meter-body">
+    <div class="romance-meter-header">
+      <h2 class="romance-meter-title">Romance Meter™</h2>
+      <span class="romance-meter-badge romance-badge-{{ romance.level }}">{{ romance.label }}</span>
+    </div>
+    <div class="romance-score-big">{{ romance.score }}<span class="romance-score-max">/100</span></div>
+
+    <!-- Factor breakdown -->
+    <div class="romance-factors">
+      {% for key, f in romance.factors.items() %}
+      <div class="romance-factor">
+        <span class="rf-label">{{ f.label }}</span>
+        <div class="rf-bar-track">
+          <div class="rf-bar-fill" style="width: {{ (f.pts / f.max * 100) | round }}%;"></div>
+        </div>
+        <span class="rf-score">{{ f.pts }}<span class="rf-max">/{{ f.max }}</span></span>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Correction factors -->
+    {% if romance.corrections %}
+    <div class="romance-corrections">
+      {% for label, delta in romance.corrections %}
+      <span class="romance-correction">{{ label }} <strong>{{ delta }}</strong></span>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <p class="romance-disclaimer">
+      ⚠️ Proprietary Romance Coefficient™ v2.4.1 — Patent pending.
+      Not FDA approved. Results may vary. Consult a florist if score drops below 40.
+    </p>
+  </div>
+
+</div>
+{% endif %}
+
 <!-- Action bar -->
 <div class="action-bar">
   <a href="/dates/new" class="btn btn-primary">➕ Log a New Date</a>

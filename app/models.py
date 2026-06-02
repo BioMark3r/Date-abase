@@ -36,15 +36,27 @@ class DateEntry(Base):
     )
 
     def to_dict(self):
+        locs = []
+        try:
+            locs = [
+                {"name": l.name, "lat": l.lat, "lon": l.lon,
+                 "label": l.label, "sort_order": l.sort_order}
+                for l in (self.locations or [])
+            ]
+        except Exception:
+            pass
         return {
             "id": self.id,
             "title": self.title,
             "pre_date_activities": self.pre_date_activities,
             "date_datetime": self.date_datetime.isoformat() if self.date_datetime else None,
             "duration_minutes": self.duration_minutes,
+            # legacy single-location fields kept for backward compat
             "location_name": self.location_name,
             "location_lat": self.location_lat,
             "location_lon": self.location_lon,
+            # new multi-location array
+            "locations": locs,
             "what_we_did": self.what_we_did,
             "notes": self.notes,
             "rating": self.rating,

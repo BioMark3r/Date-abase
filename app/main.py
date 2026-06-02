@@ -3,6 +3,7 @@ import json
 import io
 import uuid
 import shutil
+import math
 import statistics
 from collections import Counter
 from datetime import datetime, timedelta
@@ -209,6 +210,92 @@ async def logout(request: Request):
     return RedirectResponse("/", status_code=302)
 
 
+# ── Romance Meter ─────────────────────────────────────────────────────────────
+
+ROMANCE_LEVELS = [
+    (95, "💥 OVERCLOCK DETECTED",             "overclock"),
+    (82, "🔥 Running at Full Capacity",        "hot"),
+    (68, "♨️ Optimal Operating Temperature",   "warm"),
+    (54, "😊 Warming Up Nicely",               "good"),
+    (40, "🌡️ Nominal — Within Parameters",     "neutral"),
+    (26, "🥶 Below Expected Threshold",         "cool"),
+    (12, "❄️ Critically Underperforming",       "cold"),
+    ( 0, "💀 Romance.exe Has Stopped Responding","dead"),
+]
+
+
+def compute_romance_meter(dates, comms) -> dict:
+    """
+    Proprietary Romance Coefficient™ v2.4.1
+    Patent pending. Not FDA approved. Consult a doctor if score exceeds 95.
+    """
+    if not dates:
+        return {"score": 0, "label": "💀 No data — log a date first", "level": "dead",
+                "factors": {}, "corrections": []}
+
+    now = datetime.now()
+
+    # ── Factor 1: Date Quality — 35 pts ──────────────────────────────────────
+    rated = [d.rating for d in dates if d.rating]
+    f_quality = (statistics.mean(rated) / 5 * 35) if rated else 0
+
+    # ── Factor 2: Recency — 25 pts (exponential decay, half-life = 14 days) ──
+    days_since = (now - max(d.date_datetime for d in dates)).days
+    f_recency = 25 * math.exp(-days_since / 14)
+
+    # ── Factor 3: Commit Frequency — 20 pts ──────────────────────────────────
+    first_dt    = min(d.date_datetime for d in dates)
+    months_span = max(1, (now - first_dt).days / 30.44)
+    avg_pm      = len(dates) / months_span
+    f_freq      = min(20, avg_pm * 5)           # 4 dates/month = max
+
+    # ── Factor 4: Adventure Index — 10 pts ───────────────────────────────────
+    locs       = set(d.location_name for d in dates if d.location_name)
+    f_variety  = min(10, len(locs) / max(len(dates), 1) * 20)
+
+    # ── Factor 5: Communications — 10 pts ────────────────────────────────────
+    f_comms = min(10, len(comms) * 0.5)
+
+    raw = f_quality + f_recency + f_freq + f_variety + f_comms
+
+    # ── Correction factors (because love is never simple) ─────────────────────
+    corrections = []
+    if rated and all(r == 5 for r in rated):
+        raw += 3
+        corrections.append(("✨ Perfection Coefficient", "+3"))
+    if len(comms) > len(dates):
+        raw += 2
+        corrections.append(("💬 Chatterbox Bonus", "+2"))
+    if days_since > 30:
+        raw -= 5
+        corrections.append(("📅 Neglect Tax (>30 days)", "−5"))
+    if avg_pm >= 6:
+        raw += 2
+        corrections.append(("🚀 Overachiever Bonus (6+/mo)", "+2"))
+
+    score = max(0, min(100, round(raw)))
+
+    label, level = ROMANCE_LEVELS[-1][1], ROMANCE_LEVELS[-1][2]
+    for threshold, lbl, lvl in ROMANCE_LEVELS:
+        if score >= threshold:
+            label, level = lbl, lvl
+            break
+
+    return {
+        "score": score,
+        "label": label,
+        "level": level,
+        "factors": {
+            "quality":   {"pts": round(f_quality, 1),  "max": 35, "label": "Date Quality"},
+            "recency":   {"pts": round(f_recency, 1),  "max": 25, "label": "Recency"},
+            "frequency": {"pts": round(f_freq, 1),     "max": 20, "label": "Commit Frequency"},
+            "variety":   {"pts": round(f_variety, 1),  "max": 10, "label": "Adventure Index"},
+            "comms":     {"pts": round(f_comms, 1),    "max": 10, "label": "Comms Logged"},
+        },
+        "corrections": corrections,
+    }
+
+
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
 @app.get("/dashboard", response_class=HTMLResponse)
@@ -238,15 +325,19 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     ratings = [d.rating for d in dates if d.rating]
     avg_rating = round(sum(ratings) / len(ratings), 1) if ratings else None
 
+    comms = db.query(CommEntry).all()
+    romance = compute_romance_meter(dates, comms)
+
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "dates": dates,
         "stats": {
-            "total_dates":    len(dates),
-            "time_together":  time_together,
+            "total_dates":      len(dates),
+            "time_together":    time_together,
             "days_since_label": days_since_label,
-            "avg_rating":     avg_rating,
+            "avg_rating":       avg_rating,
         },
+        "romance": romance,
     })
 
 
@@ -914,33 +1005,96 @@ async def import_data(
     try:
         data = json.loads(await file.read())
         imported_dates = imported_comms = 0
+
         for item in data.get("dates", []):
-            dt = datetime.fromisoformat(item["date_datetime"]) if item.get("date_datetime") else datetime.now()
-            db.add(DateEntry(
-                title=item.get("title", "Untitled Date"),
-                pre_date_activities=item.get("pre_date_activities"),
-                date_datetime=dt,
-                duration_minutes=item.get("duration_minutes"),
-                location_name=item.get("location_name"),
-                location_lat=item.get("location_lat"),
-                location_lon=item.get("location_lon"),
-                what_we_did=item.get("what_we_did"),
-                notes=item.get("notes"),
-                rating=item.get("rating", 5),
-            ))
+            # ── Robust datetime parse ─────────────────────────────────────────
+            raw_dt = item.get("date_datetime") or item.get("date") or item.get("datetime")
+            try:
+                dt = datetime.fromisoformat(str(raw_dt)) if raw_dt else datetime.now()
+            except (ValueError, TypeError):
+                dt = datetime.now()
+
+            # ── Duration: accept minutes int OR legacy h/m dict ───────────────
+            dur = item.get("duration_minutes")
+            if dur is None:
+                h = int(item.get("duration_hours", 0) or 0)
+                m = int(item.get("duration_mins",  0) or 0)
+                dur = h * 60 + m or None
+            else:
+                try:
+                    dur = int(dur)
+                except (ValueError, TypeError):
+                    dur = None
+
+            # ── First location name for legacy field ──────────────────────────
+            locs_raw   = item.get("locations") or []
+            first_name = item.get("location_name")
+            first_lat  = item.get("location_lat")
+            first_lon  = item.get("location_lon")
+            if locs_raw:
+                first_name = locs_raw[0].get("name", first_name)
+                first_lat  = locs_raw[0].get("lat",  first_lat)
+                first_lon  = locs_raw[0].get("lon",  first_lon)
+
+            entry = DateEntry(
+                title               = item.get("title") or "Untitled Date",
+                pre_date_activities = item.get("pre_date_activities"),
+                date_datetime       = dt,
+                duration_minutes    = dur,
+                location_name       = first_name,
+                location_lat        = float(first_lat) if first_lat else None,
+                location_lon        = float(first_lon) if first_lon else None,
+                what_we_did         = item.get("what_we_did"),
+                notes               = item.get("notes"),
+                rating              = int(item.get("rating") or 5),
+            )
+            db.add(entry)
+            db.flush()   # get entry.id before creating child records
+
+            # ── Create DateLocation rows ──────────────────────────────────────
+            if locs_raw:
+                for i, loc in enumerate(locs_raw):
+                    name = (loc.get("name") or "").strip()
+                    if not name:
+                        continue
+                    db.add(DateLocation(
+                        date_id    = entry.id,
+                        name       = name,
+                        lat        = loc.get("lat"),
+                        lon        = loc.get("lon"),
+                        label      = loc.get("label") or None,
+                        sort_order = i,
+                    ))
+            elif first_name:
+                # Migrate legacy single-location field into DateLocation
+                db.add(DateLocation(
+                    date_id    = entry.id,
+                    name       = first_name,
+                    lat        = float(first_lat) if first_lat else None,
+                    lon        = float(first_lon) if first_lon else None,
+                    sort_order = 0,
+                ))
+
             imported_dates += 1
+
         for item in data.get("comms", []):
-            dt = datetime.fromisoformat(item["comm_datetime"]) if item.get("comm_datetime") else datetime.now()
+            raw_dt = item.get("comm_datetime") or item.get("datetime")
+            try:
+                dt = datetime.fromisoformat(str(raw_dt)) if raw_dt else datetime.now()
+            except (ValueError, TypeError):
+                dt = datetime.now()
             db.add(CommEntry(
-                comm_datetime=dt,
-                comm_type=item.get("comm_type", "Other"),
-                description=item.get("description", ""),
+                comm_datetime = dt,
+                comm_type     = item.get("comm_type") or "Other",
+                description   = item.get("description") or "",
             ))
             imported_comms += 1
+
         db.commit()
         return RedirectResponse(
             f"/dashboard?imported={imported_dates}&imported_comms={imported_comms}",
             status_code=302,
         )
-    except Exception:
+    except Exception as exc:
+        db.rollback()
         return RedirectResponse("/dashboard?import_error=1", status_code=302)
