@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+{% block title %}Date-alytics 📊 — Date-abase{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>📊 Date-alytics</h1>
+  <p class="page-subtitle">Turning your love life into actionable insights since day one. <em>Big Data. Big Feelings.</em></p>
+</div>
+
+{% if stats.empty %}
+<div class="empty-state">
+  <div class="empty-graphic">📊</div>
+  <h2>Not enough data… yet!</h2>
+  <p>Log some dates first — the algorithm needs fuel before it can overthink your relationship.</p>
+  <a href="/dates/new" class="btn btn-primary btn-lg">Log First Date ➕</a>
+</div>
+
+{% else %}
+
+{# ── System status terminal ─────────────────────────────────────────────── #}
+<div class="anly-terminal">
+  <div class="anly-terminal-bar">
+    <span class="anly-dot red"></span>
+    <span class="anly-dot yellow"></span>
+    <span class="anly-dot green"></span>
+    <span class="anly-terminal-title">relationship.exe  —  diagnostics</span>
+  </div>
+  <div class="anly-terminal-body">
+    <div class="anly-line">
+      <span class="anly-prompt">$</span>
+      <span class="anly-cmd"> ./love --status --verbose</span>
+    </div>
+    <div class="anly-line">
+      <span class="anly-key">  love.exe status    </span>
+      <span class="anly-val-green">RUNNING</span>
+      <span class="anly-comment">  # no known crashes</span>
+    </div>
+    <div class="anly-line">
+      <span class="anly-key">  version            </span>
+      <span class="anly-val-pink">{{ stats.rel_version }}</span>
+      <span class="anly-comment">  # {{ stats.total_dates }} commits, {{ stats.perfect }} perfect builds</span>
+    </div>
+    <div class="anly-line">
+      <span class="anly-key">  uptime              </span>
+      <span class="anly-val-pink">{{ stats.rel_days }} days</span>
+      <span class="anly-comment">  # since {{ stats.first_date.date_datetime.strftime('%b %d, %Y') }}</span>
+    </div>
+    <div class="anly-line">
+      <span class="anly-key">  build status        </span>
+      <span class="anly-val-green">{{ stats.build[0] }}</span>
+      <span class="anly-comment">  # avg rating {{ stats.avg_rating or '—' }}/5</span>
+    </div>
+    <div class="anly-line">
+      <span class="anly-key">  compatibility       </span>
+      <span class="anly-val-pink">0xFF%</span>
+      <span class="anly-comment">  # scientifically indisputable</span>
+    </div>
+    <div class="anly-line">
+      <span class="anly-key">  memory allocated    </span>
+      <span class="anly-val-green">{{ stats.total_fmt }}</span>
+      <span class="anly-comment">  # of your life, well spent</span>
+    </div>
+    <div class="anly-line">
+      <span class="anly-key">  love uptime         </span>
+      <span class="anly-val-pink">{{ stats.uptime_pct }}%</span>
+      <span class="anly-comment">  # weeks with ≥1 date / total weeks</span>
+    </div>
+    <div class="anly-line">
+      <span class="anly-key">  next maintenance    </span>
+      <span class="anly-val-green">{{ stats.maintenance }}</span>
+    </div>
+    <div class="anly-line">
+      <span class="anly-key">  stack overflow      </span>
+      <span class="anly-val-pink">YES</span>
+      <span class="anly-comment">  # hearts: overflowing</span>
+    </div>
+    <div class="anly-line">
+      <span class="anly-key">  unresolved bugs     </span>
+      <span class="anly-val-green">{{ stats.low_rated }} low-rated dates</span>
+      <span class="anly-comment">  # {{ "all clear 🎉" if stats.low_rated == 0 else "file a ticket" }}</span>
+    </div>
+    <div class="anly-line anly-cursor-line">
+      <span class="anly-prompt">$</span>
+      <span class="anly-cursor"></span>
+    </div>
+  </div>
+</div>
+
+{# ── KPI cards ──────────────────────────────────────────────────────────── #}
+<div class="anly-kpi-grid">
+
+  <div class="anly-kpi-card">
+    <div class="anly-kpi-icon">💕</div>
+    <div class="anly-kpi-value">{{ stats.total_dates }}</div>
+    <div class="anly-kpi-label">Total Dates</div>
+    <div class="anly-kpi-sub">{{ stats.rel_version }} in production</div>
+  </div>
+
+  <div class="anly-kpi-card">
+    <div class="anly-kpi-icon">⏱️</div>
+    <div class="anly-kpi-value">{{ stats.total_fmt }}</div>
+    <div class="anly-kpi-label">Time Together</div>
+    <div class="anly-kpi-sub">avg {{ stats.avg_fmt }} per date</div>
+  </div>
+
+  <div class="anly-kpi-card">
+    <div class="anly-kpi-icon">📅</div>
+    <div class="anly-kpi-value">{{ stats.avg_per_month }}</div>
+    <div class="anly-kpi-label">Dates / Month</div>
+    <div class="anly-kpi-sub">{{ stats.avg_per_week }} per week</div>
+  </div>
+
+  <div class="anly-kpi-card">
+    <div class="anly-kpi-icon">⭐</div>
+    <div class="anly-kpi-value">{{ stats.avg_rating or "—" }}</div>
+    <div class="anly-kpi-label">Avg Rating</div>
+    <div class="anly-kpi-sub">{{ stats.trend }}</div>
+  </div>
+
+  <div class="anly-kpi-card">
+    <div class="anly-kpi-icon">✨</div>
+    <div class="anly-kpi-value">{{ stats.perfect }}</div>
+    <div class="anly-kpi-label">Perfect Dates</div>
+    <div class="anly-kpi-sub">{{ stats.perfect_pct }}% flawless execution</div>
+  </div>
+
+  <div class="anly-kpi-card">
+    <div class="anly-kpi-icon">📍</div>
+    <div class="anly-kpi-value">{{ stats.uniq_locs }}</div>
+    <div class="anly-kpi-label">Unique Locations</div>
+    <div class="anly-kpi-sub">{{ stats.pct_located }}% with GPS confirmed</div>
+  </div>
+
+  <div class="anly-kpi-card">
+    <div class="anly-kpi-icon">🕰️</div>
+    <div class="anly-kpi-value">{{ stats.rel_days }}</div>
+    <div class="anly-kpi-label">Days Together</div>
+    <div class="anly-kpi-sub">{{ stats.uptime_pct }}% weekly love uptime</div>
+  </div>
+
+  <div class="anly-kpi-card">
+    <div class="anly-kpi-icon">💝</div>
+    <div class="anly-kpi-value">{{ stats.total_heart_h }}h</div>
+    <div class="anly-kpi-label">Heart-Hours™</div>
+    <div class="anly-kpi-sub">rating × duration. proprietary metric.</div>
+  </div>
+
+</div>
+
+{# ── Charts row ─────────────────────────────────────────────────────────── #}
+<div class="anly-charts-row">
+
+  {# Day of week #}
+  <div class="anly-chart-card">
+    <h3 class="anly-chart-title">📅 Dates by Day of Week</h3>
+    <p class="anly-chart-sub">Your favourite day: <strong>{{ stats.fav_day }}</strong></p>
+    <div class="bar-chart">
+      {% for day, count, pct in stats.dow_data %}
+      <div class="bar-row">
+        <span class="bar-label">{{ day[:3] }}</span>
+        <div class="bar-track">
+          <div class="bar-fill" style="width: {{ pct }}%;"></div>
+        </div>
+        <span class="bar-value">{{ count }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# Time of day #}
+  <div class="anly-chart-card">
+    <h3 class="anly-chart-title">🕰️ Time of Day</h3>
+    <p class="anly-chart-sub">You're mostly <strong>{{ stats.fav_tod }}</strong> daters</p>
+    <div class="bar-chart">
+      {% for label, count, pct in stats.tod_data %}
+      <div class="bar-row">
+        <span class="bar-label" style="min-width:100px;">{{ label }}</span>
+        <div class="bar-track">
+          <div class="bar-fill bar-fill-rose" style="width: {{ pct }}%;"></div>
+        </div>
+        <span class="bar-value">{{ count }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# Rating distribution #}
+  <div class="anly-chart-card">
+    <h3 class="anly-chart-title">❤️ Rating Distribution</h3>
+    <p class="anly-chart-sub">{{ stats.perfect }} perfect • {{ stats.low_rated }} need improvement</p>
+    <div class="bar-chart">
+      {% for stars, count in stats.rat_dist | reverse %}
+      <div class="bar-row">
+        <span class="bar-label">{% for i in range(stars) %}❤{% endfor %}</span>
+        <div class="bar-track">
+          <div class="bar-fill bar-fill-gold" style="width: {{ (count / stats.rat_max * 100) | round }}%;"></div>
+        </div>
+        <span class="bar-value">{{ count }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+
+{# ── Monthly chart ──────────────────────────────────────────────────────── #}
+<div class="anly-chart-card anly-chart-wide">
+  <h3 class="anly-chart-title">📆 Date Frequency — Last 12 Months</h3>
+  <p class="anly-chart-sub">
+    {% if stats.avg_per_month >= 4 %}🔥 You two are very consistent. Impressive commit rate.
+    {% elif stats.avg_per_month >= 2 %}💕 Solid cadence. The relationship is well-maintained.
+    {% elif stats.avg_per_month >= 1 %}📈 Monthly dates happening. Could always push more commits.
+    {% else %}🐢 Infrequent commits detected. Consider a sprint planning session.{% endif %}
+  </p>
+  <div class="bar-chart bar-chart-monthly">
+    {% for label, count, pct in stats.month_data %}
+    <div class="bar-col">
+      <div class="bar-col-track">
+        <div class="bar-col-fill" style="height: {{ pct }}%;"></div>
+      </div>
+      <span class="bar-col-value">{{ count if count else '' }}</span>
+      <span class="bar-col-label">{{ label }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{# ── Records & fun facts ────────────────────────────────────────────────── #}
+<div class="anly-records-grid">
+
+  {% if stats.longest %}
+  <div class="anly-record-card">
+    <div class="anly-record-icon">🏆</div>
+    <div class="anly-record-body">
+      <div class="anly-record-label">Longest Date</div>
+      <div class="anly-record-value">{{ stats.longest_fmt }}</div>
+      <div class="anly-record-name">
+        <a href="/dates/{{ stats.longest.id }}">{{ stats.longest.title }}</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if stats.shortest %}
+  <div class="anly-record-card">
+    <div class="anly-record-icon">⚡</div>
+    <div class="anly-record-body">
+      <div class="anly-record-label">Speedrun Date</div>
+      <div class="anly-record-value">{{ stats.shortest_fmt }}</div>
+      <div class="anly-record-name">
+        <a href="/dates/{{ stats.shortest.id }}">{{ stats.shortest.title }}</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="anly-record-card">
+    <div class="anly-record-icon">🌱</div>
+    <div class="anly-record-body">
+      <div class="anly-record-label">First Commit</div>
+      <div class="anly-record-value">{{ stats.first_date.date_datetime.strftime('%b %d, %Y') }}</div>
+      <div class="anly-record-name">
+        <a href="/dates/{{ stats.first_date.id }}">{{ stats.first_date.title }}</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="anly-record-card">
+    <div class="anly-record-icon">🕐</div>
+    <div class="anly-record-body">
+      <div class="anly-record-label">Latest Deploy</div>
+      <div class="anly-record-value">{{ stats.days_since }} day{{ 's' if stats.days_since != 1 }} ago</div>
+      <div class="anly-record-name">
+        <a href="/dates/{{ stats.latest_date.id }}">{{ stats.latest_date.title }}</a>
+      </div>
+    </div>
+  </div>
+
+  {% if stats.fav_loc %}
+  <div class="anly-record-card">
+    <div class="anly-record-icon">📍</div>
+    <div class="anly-record-body">
+      <div class="anly-record-label">Favourite Location</div>
+      <div class="anly-record-value">{{ stats.fav_loc[1] }}× visited</div>
+      <div class="anly-record-name">{{ stats.fav_loc[0] }}</div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if stats.top_comm_type %}
+  <div class="anly-record-card">
+    <div class="anly-record-icon">📡</div>
+    <div class="anly-record-body">
+      <div class="anly-record-label">Top Comm Channel</div>
+      <div class="anly-record-value">{{ stats.top_comm_type[1] }} uses</div>
+      <div class="anly-record-name">{{ stats.top_comm_type[0] }}</div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if stats.top_editor %}
+  <div class="anly-record-card">
+    <div class="anly-record-icon">✏️</div>
+    <div class="anly-record-body">
+      <div class="anly-record-label">Most Edits Made By</div>
+      <div class="anly-record-value">{{ stats.top_editor[1] }} change{{ 's' if stats.top_editor[1] != 1 }}</div>
+      <div class="anly-record-name">{{ stats.top_editor[0] }} — the meticulous one 🧐</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="anly-record-card">
+    <div class="anly-record-icon">📸</div>
+    <div class="anly-record-body">
+      <div class="anly-record-label">Photos Archived</div>
+      <div class="anly-record-value">{{ stats.total_photos }}</div>
+      <div class="anly-record-name">{{ stats.total_comms }} comms logged too</div>
+    </div>
+  </div>
+
+</div>
+
+{# ── Geeky fun stats ────────────────────────────────────────────────────── #}
+<div class="anly-funfacts">
+  <h3 class="anly-funfacts-title">🔬 Deep Analysis Results</h3>
+  <div class="anly-funfacts-grid">
+
+    <div class="anly-fact">
+      <span class="anly-fact-icon">🧮</span>
+      <span class="anly-fact-text">
+        At your current rate of <strong>{{ stats.avg_per_month }} dates/month</strong>,
+        you'll hit date #{{ (stats.total_dates + 100) | int }} in approximately
+        <strong>{{ ((100 / stats.avg_per_month) | round | int) if stats.avg_per_month else '∞' }} months</strong>.
+        Plan accordingly.
+      </span>
+    </div>
+
+    <div class="anly-fact">
+      <span class="anly-fact-icon">⚗️</span>
+      <span class="anly-fact-text">
+        Your <strong>Heart-Hours™</strong> metric stands at
+        <strong>{{ stats.total_heart_h }}h</strong>
+        — a proprietary blend of time and affection, peer-reviewed by exactly zero scientists.
+      </span>
+    </div>
+
+    <div class="anly-fact">
+      <span class="anly-fact-icon">📡</span>
+      <span class="anly-fact-text">
+        Love uptime: <strong>{{ stats.uptime_pct }}%</strong>.
+        {% if stats.uptime_pct >= 80 %}That beats most cloud providers. Impressive SLA.
+        {% elif stats.uptime_pct >= 50 %}Room for improvement. Consider adding more date nights to the on-call rotation.
+        {% else %}The oncall schedule needs urgent review. Page your partner immediately.{% endif %}
+      </span>
+    </div>
+
+    <div class="anly-fact">
+      <span class="anly-fact-icon">🗓️</span>
+      <span class="anly-fact-text">
+        <strong>{{ stats.fav_day }}</strong> is your peak performance day.
+        If {{ stats.fav_day }} were a stock, you'd hold forever.
+      </span>
+    </div>
+
+    {% if stats.total_mins %}
+    <div class="anly-fact">
+      <span class="anly-fact-icon">🌍</span>
+      <span class="anly-fact-text">
+        You've spent <strong>{{ stats.total_fmt }}</strong> together on logged dates.
+        That's enough time to watch all of
+        <strong>{{ (stats.total_mins // 52) | int }} episodes</strong> of a prestige TV drama.
+        Or just… keep dating. Better ROI.
+      </span>
+    </div>
+    {% endif %}
+
+    <div class="anly-fact">
+      <span class="anly-fact-icon">📊</span>
+      <span class="anly-fact-text">
+        Rating trend: <strong>{{ stats.trend }}</strong>
+        {% if stats.trend_delta > 0 %} by {{ stats.trend_delta }} stars. The series is getting better with each episode. Renewal confirmed. 📺
+        {% elif stats.trend_delta < 0 %} by {{ stats.trend_delta | abs }} stars. Don't worry — every great series has a rough season. 🎬
+        {% else %} — consistently excellent. The algorithm approves. 🤖{% endif %}
+      </span>
+    </div>
+
+    {% if stats.perfect_pct == 100 %}
+    <div class="anly-fact">
+      <span class="anly-fact-icon">🏅</span>
+      <span class="anly-fact-text">
+        <strong>100% perfect dates.</strong> Either you're both exceptional humans,
+        or this app doesn't have a "meh" button. Either way — achievement unlocked.
+      </span>
+    </div>
+    {% endif %}
+
+    <div class="anly-fact">
+      <span class="anly-fact-icon">🔐</span>
+      <span class="anly-fact-text">
+        This relationship has been running for <strong>{{ stats.rel_days }} days</strong>
+        with <strong>0 critical exceptions</strong> and
+        <strong>{{ stats.total_dates }} successful transactions</strong> committed to the database.
+        No rollbacks detected.
+      </span>
+    </div>
+
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

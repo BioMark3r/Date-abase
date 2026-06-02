@@ -3,7 +3,9 @@ import json
 import io
 import uuid
 import shutil
-from datetime import datetime
+import statistics
+from collections import Counter
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, UploadFile, File
@@ -624,6 +626,185 @@ async def audit_log(request: Request, db: Session = Depends(get_db)):
     logs = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).limit(200).all()
     return templates.TemplateResponse("audit.html", {
         "request": request, "logs": logs,
+    })
+
+
+# ── Date-alytics ──────────────────────────────────────────────────────────────
+
+def _fmt_mins(m: int | None) -> str:
+    if not m: return "—"
+    h, rem = divmod(int(m), 60)
+    if h and rem: return f"{h}h {rem}m"
+    return f"{h}h" if h else f"{rem}m"
+
+
+def compute_analytics(dates, comms, images_count: int, audit_logs) -> dict:
+    if not dates:
+        return {"empty": True}
+
+    now = datetime.now()
+    DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+    # ── Temporal basics ───────────────────────────────────────────────────────
+    sorted_dates = sorted(dates, key=lambda d: d.date_datetime)
+    first        = sorted_dates[0]
+    latest       = sorted_dates[-1]
+    rel_days     = max(1, (now - first.date_datetime).days)
+    months_span  = max(1, rel_days / 30.44)
+    weeks_span   = max(1, rel_days / 7)
+
+    # ── Duration ──────────────────────────────────────────────────────────────
+    with_dur  = [d for d in dates if d.duration_minutes]
+    total_m   = sum(d.duration_minutes for d in with_dur)
+    avg_m     = statistics.mean(d.duration_minutes for d in with_dur) if with_dur else None
+    longest   = max(with_dur, key=lambda d: d.duration_minutes) if with_dur else None
+    shortest  = min(with_dur, key=lambda d: d.duration_minutes) if with_dur else None
+
+    # ── Ratings ───────────────────────────────────────────────────────────────
+    rated     = [d.rating for d in dates if d.rating]
+    avg_r     = round(statistics.mean(rated), 2) if rated else None
+    perfect   = sum(1 for r in rated if r == 5)
+    low       = sum(1 for r in rated if r and r <= 2)
+    rat_dist  = [(i, rated.count(i)) for i in range(1, 6)]
+
+    # Rating trend: compare avg of first-half vs second-half
+    half = len(sorted_dates) // 2
+    if half >= 2:
+        first_avg = statistics.mean(d.rating for d in sorted_dates[:half] if d.rating) or 0
+        last_avg  = statistics.mean(d.rating for d in sorted_dates[half:] if d.rating) or 0
+        delta     = round(last_avg - first_avg, 2)
+        trend     = ("📈 Improving" if delta > 0.2 else "📉 Declining" if delta < -0.2 else "➡️ Stable")
+        trend_delta = delta
+    else:
+        trend = "➡️ Too early to tell"
+        trend_delta = 0
+
+    # ── Day of week ───────────────────────────────────────────────────────────
+    dow_counts = Counter(d.date_datetime.weekday() for d in dates)
+    dow_max    = max(dow_counts.values(), default=1)
+    dow_data   = [(DAY_NAMES[i], dow_counts.get(i, 0),
+                   round(dow_counts.get(i, 0) / dow_max * 100)) for i in range(7)]
+    fav_day    = DAY_NAMES[dow_counts.most_common(1)[0][0]] if dow_counts else "—"
+
+    # ── Time of day ───────────────────────────────────────────────────────────
+    def tod(dt):
+        h = dt.hour
+        if  5 <= h < 12: return "🌅 Morning"
+        if 12 <= h < 17: return "☀️ Afternoon"
+        if 17 <= h < 21: return "🌆 Evening"
+        return "🌙 Night Owl"
+    tod_counts = Counter(tod(d.date_datetime) for d in dates)
+    tod_max    = max(tod_counts.values(), default=1)
+    tod_order  = ["🌅 Morning","☀️ Afternoon","🌆 Evening","🌙 Night Owl"]
+    tod_data   = [(t, tod_counts.get(t, 0),
+                   round(tod_counts.get(t, 0) / tod_max * 100)) for t in tod_order]
+    fav_tod    = tod_counts.most_common(1)[0][0] if tod_counts else "—"
+
+    # ── Monthly chart (last 12 months) ────────────────────────────────────────
+    months = []
+    for i in range(11, -1, -1):
+        m_dt   = now.replace(day=1) - timedelta(days=i * 30)
+        m_key  = m_dt.strftime("%Y-%m")
+        m_lbl  = m_dt.strftime("%b '%y")
+        months.append((m_key, m_lbl))
+    m_counts  = Counter(d.date_datetime.strftime("%Y-%m") for d in dates)
+    m_max     = max((m_counts.get(k, 0) for k, _ in months), default=1)
+    month_data = [(lbl, m_counts.get(k, 0),
+                   round(m_counts.get(k, 0) / max(m_max, 1) * 100)) for k, lbl in months]
+    busiest_m_key = m_counts.most_common(1)[0][0] if m_counts else None
+
+    # ── Locations ─────────────────────────────────────────────────────────────
+    locs        = [d.location_name for d in dates if d.location_name]
+    uniq_locs   = len(set(locs))
+    fav_loc     = Counter(locs).most_common(1)[0] if locs else None   # (name, count)
+    pct_located = round(len(locs) / len(dates) * 100) if dates else 0
+
+    # ── Comms ─────────────────────────────────────────────────────────────────
+    top_comm_type = Counter(c.comm_type for c in comms).most_common(1)[0] if comms else None
+
+    # ── Audit ──────────────────────────────────────────────────────────────────
+    editor_counts = Counter(log.changed_by for log in audit_logs if log.action != "deleted")
+    top_editor    = editor_counts.most_common(1)[0] if editor_counts else None
+
+    # ── Love uptime (% of weeks with ≥1 date) ─────────────────────────────────
+    weeks_with = len({d.date_datetime.isocalendar()[:2] for d in dates})
+    uptime_pct = min(100, round(weeks_with / weeks_span * 100, 1))
+
+    # ── Relationship version (semantic-ish) ───────────────────────────────────
+    major = int(months_span)
+    minor = len(dates)
+    patch = perfect
+    rel_version = f"v{major}.{minor}.{patch}"
+
+    # ── Funny build status ────────────────────────────────────────────────────
+    if avg_r is None:      build = ("⚪ UNRATED", "gray")
+    elif avg_r >= 4.5:     build = ("✅ PASSING", "green")
+    elif avg_r >= 3.5:     build = ("⚠️ UNSTABLE", "yellow")
+    else:                  build = ("❌ FAILING",  "red")
+
+    maintenance = (
+        "🚨 Date night critically overdue!" if (now - latest.date_datetime).days > 30
+        else "⚠️  Schedule a date soon"     if (now - latest.date_datetime).days > 14
+        else "✅ All systems nominal"
+    )
+
+    return {
+        "empty":          False,
+        "total_dates":    len(dates),
+        "total_comms":    len(comms),
+        "total_photos":   images_count,
+        "rel_days":       rel_days,
+        "rel_version":    rel_version,
+        "first_date":     first,
+        "latest_date":    latest,
+        "days_since":     (now - latest.date_datetime).days,
+        "avg_per_month":  round(len(dates) / months_span, 1),
+        "avg_per_week":   round(len(dates) / weeks_span, 2),
+        "total_mins":     total_m,
+        "total_fmt":      _fmt_mins(total_m),
+        "avg_mins":       avg_m,
+        "avg_fmt":        _fmt_mins(int(avg_m)) if avg_m else "—",
+        "longest":        longest,
+        "longest_fmt":    _fmt_mins(longest.duration_minutes) if longest else "—",
+        "shortest":       shortest,
+        "shortest_fmt":   _fmt_mins(shortest.duration_minutes) if shortest else "—",
+        "avg_rating":     avg_r,
+        "perfect":        perfect,
+        "perfect_pct":    round(perfect / len(dates) * 100) if dates else 0,
+        "low_rated":      low,
+        "rat_dist":       rat_dist,
+        "rat_max":        max(c for _, c in rat_dist) or 1,
+        "trend":          trend,
+        "trend_delta":    trend_delta,
+        "dow_data":       dow_data,
+        "fav_day":        fav_day,
+        "tod_data":       tod_data,
+        "fav_tod":        fav_tod,
+        "month_data":     month_data,
+        "uniq_locs":      uniq_locs,
+        "fav_loc":        fav_loc,
+        "pct_located":    pct_located,
+        "top_comm_type":  top_comm_type,
+        "top_editor":     top_editor,
+        "uptime_pct":     uptime_pct,
+        "build":          build,
+        "maintenance":    maintenance,
+        "total_heart_h":  round(sum((d.rating or 0) * (d.duration_minutes or 0) for d in dates) / 60, 1),
+    }
+
+
+@app.get("/analytics", response_class=HTMLResponse)
+async def analytics(request: Request, db: Session = Depends(get_db)):
+    if not require_auth(request):
+        return RedirectResponse("/", status_code=302)
+    from .models import DateImage
+    dates       = db.query(DateEntry).order_by(DateEntry.date_datetime).all()
+    comms       = db.query(CommEntry).all()
+    img_count   = db.query(DateImage).count()
+    audit_logs  = db.query(AuditLog).all()
+    stats       = compute_analytics(dates, comms, img_count, audit_logs)
+    return templates.TemplateResponse("analytics.html", {
+        "request": request, "stats": stats,
     })
 
 
