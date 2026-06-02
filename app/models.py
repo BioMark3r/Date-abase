@@ -28,6 +28,12 @@ class DateEntry(Base):
         cascade="all, delete-orphan",
         order_by="DateImage.uploaded_at",
     )
+    locations = relationship(
+        "DateLocation",
+        back_populates="date",
+        cascade="all, delete-orphan",
+        order_by="DateLocation.sort_order",
+    )
 
     def to_dict(self):
         return {
@@ -56,6 +62,21 @@ class DateImage(Base):
     uploaded_at = Column(DateTime, default=func.now())
 
     date = relationship("DateEntry", back_populates="images")
+
+
+class DateLocation(Base):
+    """One row per location stop on a date — a date can have many."""
+    __tablename__ = "date_locations"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    date_id    = Column(Integer, ForeignKey("dates.id"), nullable=False)
+    name       = Column(String(300), nullable=False)
+    lat        = Column(Float, nullable=True)
+    lon        = Column(Float, nullable=True)
+    label      = Column(String(120), nullable=True)   # e.g. "Stop 1 — Dinner"
+    sort_order = Column(Integer, default=0)
+
+    date = relationship("DateEntry", back_populates="locations")
 
 
 class CommEntry(Base):

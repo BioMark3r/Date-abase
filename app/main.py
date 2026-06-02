@@ -16,7 +16,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session, joinedload
 
 from .database import engine, get_db, Base
-from .models import DateEntry, DateImage, CommEntry, AppSettings, AuditLog
+from .models import DateEntry, DateImage, DateLocation, CommEntry, AppSettings, AuditLog
 
 Base.metadata.create_all(bind=engine)
 
@@ -147,6 +147,27 @@ def add_audit(
     ))
 
 
+def save_locations(db: Session, date_id: int, locations_json: str) -> None:
+    """Replace all DateLocation rows for a date from a JSON string."""
+    db.query(DateLocation).filter(DateLocation.date_id == date_id).delete()
+    try:
+        locs = json.loads(locations_json) if locations_json.strip() else []
+    except Exception:
+        locs = []
+    for i, loc in enumerate(locs):
+        name = (loc.get("name") or "").strip()
+        if not name:
+            continue
+        db.add(DateLocation(
+            date_id=date_id,
+            name=name,
+            lat=loc.get("lat"),
+            lon=loc.get("lon"),
+            label=(loc.get("label") or "").strip() or None,
+            sort_order=i,
+        ))
+
+
 async def save_upload(file: UploadFile) -> str | None:
     """Save an uploaded image; returns stored filename or None if invalid."""
     if not file or not file.filename:
@@ -238,6 +259,7 @@ async def new_date_form(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse("date_form.html", {
         "request": request, "entry": None, "error": None,
         "settings": get_settings(db),
+        "existing_locs_json": "[]",
     })
 
 
@@ -256,6 +278,7 @@ async def create_date(
     notes:               str          = Form(""),
     rating:              int          = Form(5),
     changed_by:          str          = Form(""),
+    locations_json:      str          = Form(""),
     images:              List[UploadFile] = File(default=[]),
     db: Session = Depends(get_db),
 ):
@@ -274,14 +297,23 @@ async def create_date(
     m = int(duration_mins)  if duration_mins.strip().isdigit()  else 0
     total_mins = h * 60 + m
 
+    # Derive a summary location_name from first location for legacy/export compat
+    first_loc_name = None
+    try:
+        locs = json.loads(locations_json) if locations_json.strip() else []
+        if locs:
+            first_loc_name = locs[0].get("name")
+    except Exception:
+        pass
+
     entry = DateEntry(
         title=title,
         pre_date_activities=pre_date_activities or None,
         date_datetime=dt,
         duration_minutes=total_mins if total_mins else None,
-        location_name=location_name or None,
-        location_lat=float(location_lat) if location_lat else None,
-        location_lon=float(location_lon) if location_lon else None,
+        location_name=first_loc_name or location_name or None,
+        location_lat=None,
+        location_lon=None,
         what_we_did=what_we_did or None,
         notes=notes or None,
         rating=rating,
@@ -289,6 +321,8 @@ async def create_date(
     db.add(entry)
     db.commit()
     db.refresh(entry)
+
+    save_locations(db, entry.id, locations_json)
 
     for img_file in images:
         fname = await save_upload(img_file)
@@ -308,7 +342,7 @@ async def view_date(request: Request, entry_id: int, db: Session = Depends(get_d
         return RedirectResponse("/", status_code=302)
     entry = (
         db.query(DateEntry)
-        .options(joinedload(DateEntry.images))
+        .options(joinedload(DateEntry.images), joinedload(DateEntry.locations))
         .filter(DateEntry.id == entry_id)
         .first()
     )
@@ -331,15 +365,26 @@ async def edit_date_form(request: Request, entry_id: int, db: Session = Depends(
         return RedirectResponse("/", status_code=302)
     entry = (
         db.query(DateEntry)
-        .options(joinedload(DateEntry.images))
+        .options(joinedload(DateEntry.images), joinedload(DateEntry.locations))
         .filter(DateEntry.id == entry_id)
         .first()
     )
     if not entry:
         raise HTTPException(status_code=404, detail="Date not found 💔")
+    # Build existing-locations JSON for the form JS to pre-populate
+    existing_locs = [
+        {"name": l.name, "lat": l.lat, "lon": l.lon, "label": l.label or ""}
+        for l in entry.locations
+    ]
+    # Backward-compat: migrate old single-location field into the list if no rows yet
+    if not existing_locs and entry.location_name:
+        existing_locs = [{"name": entry.location_name,
+                          "lat": entry.location_lat,
+                          "lon": entry.location_lon, "label": ""}]
     return templates.TemplateResponse("date_form.html", {
         "request": request, "entry": entry, "error": None,
         "settings": get_settings(db),
+        "existing_locs_json": json.dumps(existing_locs),
     })
 
 
@@ -359,6 +404,7 @@ async def update_date(
     notes:               str          = Form(""),
     rating:              int          = Form(5),
     changed_by:          str          = Form(""),
+    locations_json:      str          = Form(""),
     delete_images:       str          = Form(""),
     images:              List[UploadFile] = File(default=[]),
     db: Session = Depends(get_db),
@@ -367,7 +413,7 @@ async def update_date(
         return RedirectResponse("/", status_code=302)
     entry = (
         db.query(DateEntry)
-        .options(joinedload(DateEntry.images))
+        .options(joinedload(DateEntry.images), joinedload(DateEntry.locations))
         .filter(DateEntry.id == entry_id)
         .first()
     )
@@ -422,6 +468,17 @@ async def update_date(
     entry.what_we_did         = what_we_did or None
     entry.notes               = notes or None
     entry.rating              = rating
+
+    # Update locations (full replace)
+    save_locations(db, entry.id, locations_json)
+    # Keep legacy location_name in sync with first stop
+    try:
+        first_loc = json.loads(locations_json)[0] if locations_json.strip() else None
+        entry.location_name = first_loc["name"] if first_loc else None
+        entry.location_lat  = first_loc.get("lat")
+        entry.location_lon  = first_loc.get("lon")
+    except Exception:
+        pass
 
     new_vals = {
         "title":               entry.title,

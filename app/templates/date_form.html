@@ -78,46 +78,36 @@
       </div>
     </div>
 
-    <!-- Location -->
+    <!-- Locations (multi-stop) -->
     <div class="form-section">
       <h3 class="form-section-title">📍 Where Did It Happen?</h3>
+      <p class="form-hint" style="margin-bottom:1rem;">Add one or more locations — perfect for dinner + a movie, or any multi-stop adventure.</p>
 
-      <!-- Search row -->
+      <!-- Search -->
       <div class="form-group" style="position:relative;">
-        <label for="location-search">Search Location</label>
+        <label for="location-search">Search &amp; Add a Stop</label>
         <div class="location-search-row">
           <input type="text" id="location-search" class="form-input"
-            placeholder="Search for a place… (e.g. Central Park, New York)"
+            placeholder="Search for a place… (e.g. Joe's Pizza, New York)"
             autocomplete="off" />
           <button type="button" class="btn btn-outline" id="loc-search-btn">🔍 Search</button>
         </div>
-
-        <!-- Results dropdown -->
         <div id="location-results" class="location-results" style="display:none;"></div>
-      </div>
-
-      <!-- Confirmed location chip -->
-      <div id="location-confirmed" class="location-confirmed" style="display:none;">
-        <span class="location-confirmed-icon">✅</span>
-        <span id="location-confirmed-text" class="location-confirmed-name"></span>
-        <button type="button" class="location-confirmed-clear" onclick="clearLocation()" title="Clear location">✕</button>
       </div>
 
       <!-- Map -->
       <div id="map" class="map-container"></div>
-      <p class="form-hint" style="margin-top:0.4rem;">You can also click the map or drag the pin to fine-tune the position.</p>
+      <p class="form-hint" style="margin-top:0.4rem;">Click the map to add a stop directly, or drag any pin to fine-tune.</p>
 
-      <!-- Hidden fields + editable name override -->
-      <div class="form-group" style="margin-top:0.75rem;">
-        <label for="location_name">Location Label <span class="form-hint" style="font-weight:400;">(edit to personalise)</span></label>
-        <input type="text" id="location_name" name="location_name" class="form-input"
-          placeholder="e.g. The cute coffee shop on Main Street"
-          value="{{ entry.location_name if entry and entry.location_name else '' }}" />
-      </div>
-      <input type="hidden" id="location_lat" name="location_lat"
-        value="{{ entry.location_lat if entry and entry.location_lat else '' }}" />
-      <input type="hidden" id="location_lon" name="location_lon"
-        value="{{ entry.location_lon if entry and entry.location_lon else '' }}" />
+      <!-- Stop list -->
+      <div id="location-list" class="location-list" style="margin-top:0.9rem;"></div>
+
+      <!-- Serialised value sent to server -->
+      <input type="hidden" name="locations_json" id="locations_json" value="" />
+      <!-- Keep legacy hidden fields so old export/import isn't broken -->
+      <input type="hidden" name="location_name" value="" />
+      <input type="hidden" name="location_lat"  value="" />
+      <input type="hidden" name="location_lon"  value="" />
     </div>
 
     <!-- What we did -->
@@ -210,70 +200,114 @@
 {% block scripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  // ── Map init ────────────────────────────────────────────────────────────────
-  const initLat = {{ entry.location_lat if entry and entry.location_lat else 40.7128 }};
-  const initLon = {{ entry.location_lon if entry and entry.location_lon else -74.0060 }};
-  const hasPin  = {{ 'true' if entry and entry.location_lat else 'false' }};
+  // ── Multi-stop location state ───────────────────────────────────────────────
+  let locations = {{ existing_locs_json | safe }};   // [{name,lat,lon,label}]
+  const markers = [];   // parallel array of L.Marker
 
-  const map = L.map('map').setView([initLat, initLon], hasPin ? 14 : 4);
+  // ── Map init ────────────────────────────────────────────────────────────────
+  const map = L.map('map').setView([40.7128, -74.0060], 4);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
   }).addTo(map);
 
-  const pinIcon = L.divIcon({
-    className: '',
-    html: '<div class="map-pin-confirmed">📍</div>',
-    iconSize: [32, 32], iconAnchor: [16, 32]
-  });
-
-  let marker = null;
-
-  function placePin(lat, lng, draggable = true) {
-    if (marker) marker.setLatLng([lat, lng]);
-    else {
-      marker = L.marker([lat, lng], { icon: pinIcon, draggable }).addTo(map);
-      marker.on('dragend', e => {
-        const p = e.target.getLatLng();
-        setLatLon(p.lat, p.lng);
-        reverseGeocode(p.lat, p.lng, false); // update label on drag, don't overwrite confirmed
-      });
-    }
+  // Fit to existing pins on load
+  if (locations.length) {
+    locations.forEach((_, i) => addMarkerForIndex(i));
+    fitMap();
   }
+  renderList();
 
-  if (hasPin) {
-    placePin(initLat, initLon);
-    showConfirmed('{{ entry.location_name if entry and entry.location_name else "" }}');
-  }
-
-  map.on('click', function(e) {
+  map.on('click', e => {
     const { lat, lng } = e.latlng;
-    placePin(lat, lng);
-    setLatLon(lat, lng);
-    reverseGeocode(lat, lng, true);
+    reverseGeocode(lat, lng, name => {
+      addStop({ name, lat, lon: lng, label: '' });
+    });
     hideResults();
   });
 
-  function setLatLon(lat, lng) {
-    document.getElementById('location_lat').value = lat.toFixed(6);
-    document.getElementById('location_lon').value = lng.toFixed(6);
+  // ── Core location helpers ───────────────────────────────────────────────────
+  function addStop(loc) {
+    locations.push(loc);
+    addMarkerForIndex(locations.length - 1);
+    fitMap();
+    renderList();
+    commit();
   }
 
-  function reverseGeocode(lat, lon, updateConfirmed) {
-    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
-      .then(r => r.json())
-      .then(d => {
-        if (!d.display_name) return;
-        const short = shortName(d.display_name);
-        document.getElementById('location_name').value = short;
-        if (updateConfirmed) showConfirmed(short);
-      }).catch(() => {});
+  function removeStop(idx) {
+    markers[idx].remove();
+    markers.splice(idx, 1);
+    locations.splice(idx, 1);
+    // Re-number remaining markers
+    markers.forEach((m, i) => m.setIcon(numberedIcon(i)));
+    renderList();
+    commit();
   }
 
-  function shortName(display_name) {
-    return display_name.split(',').slice(0, 3).join(',').trim();
+  function updateLabel(idx, val) {
+    locations[idx].label = val;
+    commit();
   }
 
-  // ── Search with dropdown results ────────────────────────────────────────────
+  function commit() {
+    document.getElementById('locations_json').value = JSON.stringify(locations);
+  }
+
+  function addMarkerForIndex(idx) {
+    const loc = locations[idx];
+    if (loc.lat == null || loc.lon == null) return;
+    const m = L.marker([loc.lat, loc.lon], { icon: numberedIcon(idx), draggable: true }).addTo(map);
+    m.on('dragend', e => {
+      const p = e.target.getLatLng();
+      locations[idx].lat = parseFloat(p.lat.toFixed(6));
+      locations[idx].lon = parseFloat(p.lng.toFixed(6));
+      commit();
+    });
+    markers[idx] = m;
+  }
+
+  function fitMap() {
+    const pts = locations.filter(l => l.lat != null).map(l => [l.lat, l.lon]);
+    if (pts.length === 1) map.setView(pts[0], 14);
+    else if (pts.length > 1) map.fitBounds(pts, { padding: [40, 40] });
+  }
+
+  function numberedIcon(idx) {
+    return L.divIcon({
+      className: '',
+      html: `<div class="map-pin-num"><span>${idx + 1}</span></div>`,
+      iconSize: [32, 40], iconAnchor: [16, 40],
+    });
+  }
+
+  // ── Stop list rendering ─────────────────────────────────────────────────────
+  function renderList() {
+    const list = document.getElementById('location-list');
+    if (!locations.length) {
+      list.innerHTML = '<p class="loc-empty-hint">No stops added yet — search above or click the map.</p>';
+      return;
+    }
+    list.innerHTML = locations.map((loc, i) => `
+      <div class="loc-item" id="loc-item-${i}">
+        <div class="loc-item-num">${i + 1}</div>
+        <div class="loc-item-body">
+          <div class="loc-item-name">${escHtml(loc.name)}</div>
+          <input type="text" class="form-input loc-item-label"
+            placeholder="Label (optional — e.g. Dinner, Movie, Walk)"
+            value="${escHtml(loc.label || '')}"
+            oninput="updateLabel(${i}, this.value)" />
+        </div>
+        <button type="button" class="loc-item-remove" onclick="removeStop(${i})" title="Remove stop">✕</button>
+      </div>
+    `).join('');
+    commit();
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Search dropdown ─────────────────────────────────────────────────────────
   const searchInput = document.getElementById('location-search');
   const resultsBox  = document.getElementById('location-results');
   let searchTimeout = null;
@@ -283,12 +317,9 @@
     if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
     if (e.key === 'Escape') hideResults();
   });
-
-  // Live search after 400ms pause
   searchInput.addEventListener('input', () => {
     clearTimeout(searchTimeout);
-    const q = searchInput.value.trim();
-    if (q.length < 3) { hideResults(); return; }
+    if (searchInput.value.trim().length < 3) { hideResults(); return; }
     searchTimeout = setTimeout(doSearch, 400);
   });
 
@@ -297,85 +328,63 @@
     if (!q) return;
     resultsBox.innerHTML = '<div class="loc-result-item loc-result-loading">🔍 Searching…</div>';
     resultsBox.style.display = 'block';
-
     fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=1`)
       .then(r => r.json())
       .then(results => {
         if (!results.length) {
-          resultsBox.innerHTML = '<div class="loc-result-item loc-result-empty">😕 No results found. Try a different search.</div>';
+          resultsBox.innerHTML = '<div class="loc-result-item loc-result-empty">😕 No results. Try a different search.</div>';
           return;
         }
         resultsBox.innerHTML = '';
-        results.forEach((r, i) => {
+        results.forEach(r => {
           const item = document.createElement('div');
           item.className = 'loc-result-item';
-          const typeLabel = r.type ? r.type.replace(/_/g, ' ') : r.class || '';
+          const typeLabel = (r.type || r.class || '').replace(/_/g, ' ');
           item.innerHTML = `
             <span class="loc-result-icon">${locationEmoji(r.class, r.type)}</span>
             <span class="loc-result-body">
               <span class="loc-result-name">${shortName(r.display_name)}</span>
               <span class="loc-result-type">${typeLabel}</span>
             </span>
+            <span class="loc-result-add">＋ Add stop</span>
           `;
-          item.addEventListener('click', () => selectResult(r));
+          item.addEventListener('click', () => {
+            addStop({ name: shortName(r.display_name), lat: parseFloat(r.lat), lon: parseFloat(r.lon), label: '' });
+            hideResults();
+            searchInput.value = '';
+          });
           resultsBox.appendChild(item);
         });
       })
-      .catch(() => {
-        resultsBox.innerHTML = '<div class="loc-result-item loc-result-empty">⚠️ Search failed — check your connection.</div>';
-      });
+      .catch(() => { resultsBox.innerHTML = '<div class="loc-result-item loc-result-empty">⚠️ Search failed.</div>'; });
   }
 
-  function selectResult(r) {
-    const lat = parseFloat(r.lat), lng = parseFloat(r.lon);
-    const name = shortName(r.display_name);
-    map.setView([lat, lng], 15);
-    placePin(lat, lng);
-    setLatLon(lat, lng);
-    document.getElementById('location_name').value = name;
-    showConfirmed(name);
-    hideResults();
-    searchInput.value = '';
-  }
-
-  function showConfirmed(name) {
-    if (!name) return;
-    document.getElementById('location-confirmed-text').textContent = name;
-    document.getElementById('location-confirmed').style.display = 'flex';
-  }
-
-  function clearLocation() {
-    if (marker) { marker.remove(); marker = null; }
-    document.getElementById('location_lat').value = '';
-    document.getElementById('location_lon').value = '';
-    document.getElementById('location_name').value = '';
-    document.getElementById('location-confirmed').style.display = 'none';
-    map.setView([40.7128, -74.0060], 4);
-  }
-
-  function hideResults() {
-    resultsBox.style.display = 'none';
-    resultsBox.innerHTML = '';
-  }
-
-  // Click outside to close results
+  function hideResults() { resultsBox.style.display = 'none'; resultsBox.innerHTML = ''; }
   document.addEventListener('click', e => {
     if (!e.target.closest('#location-results') && !e.target.closest('#location-search') && !e.target.closest('#loc-search-btn'))
       hideResults();
   });
 
+  function shortName(dn) { return dn.split(',').slice(0, 3).join(',').trim(); }
+
+  function reverseGeocode(lat, lon, cb) {
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+      .then(r => r.json())
+      .then(d => cb(d.display_name ? shortName(d.display_name) : `${lat.toFixed(4)}, ${lon.toFixed(4)}`))
+      .catch(() => cb(`${lat.toFixed(4)}, ${lon.toFixed(4)}`));
+  }
+
   function locationEmoji(cls, type) {
-    const t = (type || '').toLowerCase();
-    const c = (cls  || '').toLowerCase();
-    if (t.includes('restaurant') || t.includes('cafe') || t.includes('bar') || t.includes('food')) return '🍽️';
-    if (t.includes('park') || t.includes('garden') || t.includes('nature')) return '🌳';
-    if (t.includes('cinema') || t.includes('theatre') || t.includes('arts')) return '🎭';
-    if (t.includes('museum') || t.includes('gallery')) return '🏛️';
-    if (t.includes('hotel') || t.includes('hostel')) return '🏨';
-    if (t.includes('beach') || t.includes('bay') || t.includes('lake')) return '🏖️';
-    if (c === 'highway' || t.includes('road') || t.includes('street')) return '🛣️';
-    if (c === 'boundary' || t.includes('city') || t.includes('town') || t.includes('suburb')) return '🏙️';
-    if (t.includes('shop') || t.includes('mall') || t.includes('store')) return '🛍️';
+    const t = (type || '').toLowerCase(), c = (cls || '').toLowerCase();
+    if (t.includes('restaurant')||t.includes('cafe')||t.includes('bar')||t.includes('food')) return '🍽️';
+    if (t.includes('park')||t.includes('garden')||t.includes('nature')) return '🌳';
+    if (t.includes('cinema')||t.includes('theatre')||t.includes('arts')) return '🎭';
+    if (t.includes('museum')||t.includes('gallery')) return '🏛️';
+    if (t.includes('hotel')||t.includes('hostel')) return '🏨';
+    if (t.includes('beach')||t.includes('bay')||t.includes('lake')) return '🏖️';
+    if (c==='highway'||t.includes('road')||t.includes('street')) return '🛣️';
+    if (c==='boundary'||t.includes('city')||t.includes('town')||t.includes('suburb')) return '🏙️';
+    if (t.includes('shop')||t.includes('mall')||t.includes('store')) return '🛍️';
     return '📍';
   }
 

@@ -76,16 +76,36 @@
   </section>
   {% endif %}
 
-  {% if entry.location_lat and entry.location_lon %}
+  {% set has_new_locs = entry.locations and entry.locations | length > 0 %}
+  {% set has_legacy   = entry.location_lat and not has_new_locs %}
+
+  {% if has_new_locs or has_legacy %}
   <section class="detail-section">
     <h2 class="detail-section-title">📍 Where It Happened</h2>
-    <div id="detail-map" class="map-container map-readonly"></div>
-    <p class="map-coords">
-      <a href="https://www.openstreetmap.org/?mlat={{ entry.location_lat }}&mlon={{ entry.location_lon }}&zoom=15"
-         target="_blank" rel="noopener" class="map-link">
-        🗺️ Open in OpenStreetMap
-      </a>
-    </p>
+
+    {% if has_new_locs %}
+    <!-- Stop list -->
+    <div class="detail-stops">
+      {% for loc in entry.locations %}
+      <div class="detail-stop">
+        <div class="detail-stop-num">{{ loop.index }}</div>
+        <div class="detail-stop-body">
+          {% if loc.label %}<div class="detail-stop-label">{{ loc.label }}</div>{% endif %}
+          <div class="detail-stop-name">{{ loc.name }}</div>
+          {% if loc.lat and loc.lon %}
+          <a href="https://www.openstreetmap.org/?mlat={{ loc.lat }}&mlon={{ loc.lon }}&zoom=16"
+             target="_blank" rel="noopener" class="map-link" style="font-size:0.8rem;">
+            🗺️ Open in map
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Map -->
+    <div id="detail-map" class="map-container map-readonly" style="margin-top:0.75rem;"></div>
   </section>
   {% endif %}
 
@@ -142,20 +162,51 @@
 {% endblock %}
 
 {% block scripts %}
-{% if entry.location_lat and entry.location_lon %}
+{% set has_new_locs = entry.locations and entry.locations | length > 0 %}
+{% set has_legacy   = entry.location_lat and not has_new_locs %}
+{% if has_new_locs or has_legacy %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  const map = L.map('detail-map', { zoomControl: true, dragging: true }).setView(
-    [{{ entry.location_lat }}, {{ entry.location_lon }}], 14
-  );
+  const detailMap = L.map('detail-map', { zoomControl: true, dragging: true });
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
-  }).addTo(map);
-  const heartIcon = L.divIcon({ className: '', html: '<div style="font-size:28px;line-height:1;">📍</div>', iconSize: [28, 28], iconAnchor: [14, 28] });
-  L.marker([{{ entry.location_lat }}, {{ entry.location_lon }}], { icon: heartIcon })
-    .addTo(map)
+  }).addTo(detailMap);
+
+  function numberedIcon(n) {
+    return L.divIcon({
+      className: '',
+      html: `<div class="map-pin-num"><span>${n}</span></div>`,
+      iconSize: [32, 40], iconAnchor: [16, 40],
+    });
+  }
+
+  {% if has_new_locs %}
+  const stops = [
+    {% for loc in entry.locations %}
+    {% if loc.lat and loc.lon %}
+    { lat: {{ loc.lat }}, lon: {{ loc.lon }}, name: {{ (loc.label or loc.name) | tojson }}, idx: {{ loop.index }} },
+    {% endif %}
+    {% endfor %}
+  ];
+  const bounds = [];
+  stops.forEach(s => {
+    L.marker([s.lat, s.lon], { icon: numberedIcon(s.idx) })
+      .addTo(detailMap)
+      .bindPopup(`<strong>${s.name}</strong>`);
+    bounds.push([s.lat, s.lon]);
+  });
+  if (bounds.length === 1) detailMap.setView(bounds[0], 15);
+  else if (bounds.length > 1) detailMap.fitBounds(bounds, { padding: [30, 30] });
+  else detailMap.setView([40.7128, -74.0060], 4);
+
+  {% elif has_legacy %}
+  const legacyIcon = L.divIcon({ className: '', html: '<div class="map-pin-confirmed">📍</div>', iconSize: [32,32], iconAnchor:[16,32] });
+  L.marker([{{ entry.location_lat }}, {{ entry.location_lon }}], { icon: legacyIcon })
+    .addTo(detailMap)
     .bindPopup('<strong>{{ entry.location_name or "Our date spot" }}</strong>')
     .openPopup();
+  detailMap.setView([{{ entry.location_lat }}, {{ entry.location_lon }}], 14);
+  {% endif %}
 </script>
 {% endif %}
 {% endblock %}
