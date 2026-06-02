@@ -1657,145 +1657,148 @@ a:hover { color: var(--pink); }
    ROMANCE METER
    ══════════════════════════════════════════════════════════════════════════ */
 
-.romance-meter-card {
+/* Card — explicit row layout */
+.rm-card {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 2rem;
+  gap: 2.5rem;
   background: var(--white);
   border: 2px solid var(--pink-light);
   border-radius: var(--radius-lg);
-  padding: 1.5rem 2rem;
+  padding: 1.75rem 2rem;
   margin-bottom: 2rem;
   box-shadow: var(--shadow-md);
   position: relative;
   overflow: hidden;
 }
-/* Subtle level-based left accent */
-.romance-meter-card::before {
+/* Level accent strip on left edge */
+.rm-card::before {
   content: '';
   position: absolute;
   left: 0; top: 0; bottom: 0;
   width: 5px;
   border-radius: var(--radius-lg) 0 0 var(--radius-lg);
 }
-.romance-level-overclock::before { background: #c0392b; }
-.romance-level-hot::before        { background: var(--rose); }
-.romance-level-warm::before       { background: #ff7043; }
-.romance-level-good::before       { background: var(--pink); }
-.romance-level-neutral::before    { background: #78909c; }
-.romance-level-cool::before       { background: #42a5f5; }
-.romance-level-cold::before       { background: #29b6f6; }
-.romance-level-dead::before       { background: #bdbdbd; }
+.rm-lvl-overclock::before { background: #c0392b; }
+.rm-lvl-hot::before       { background: var(--rose); }
+.rm-lvl-warm::before      { background: #ff7043; }
+.rm-lvl-good::before      { background: var(--pink); }
+.rm-lvl-neutral::before   { background: #78909c; }
+.rm-lvl-cool::before      { background: #42a5f5; }
+.rm-lvl-cold::before      { background: #29b6f6; }
+.rm-lvl-dead::before      { background: #bdbdbd; }
 
-/* Thermometer */
-.therm-wrap {
+/* Thermometer column */
+.rm-therm-col {
+  flex-shrink: 0;
+  width: 90px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  flex-shrink: 0;
+  gap: 0.25rem;
 }
-.therm-svg { overflow: visible; }
-.therm-unit {
+.rm-unit-label {
   font-family: 'Courier New', Courier, monospace;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--rose);
-  margin-top: 0.2rem;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
-/* Right panel */
-.romance-meter-body { flex: 1; min-width: 0; }
+/* Detail column */
+.rm-detail-col {
+  flex: 1;
+  min-width: 0;
+}
 
-.romance-meter-header {
+.rm-header {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
   flex-wrap: wrap;
-  margin-bottom: 0.5rem;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
 }
-.romance-meter-title {
+.rm-title {
   font-family: 'Playfair Display', serif;
-  font-size: 1.25rem;
+  font-size: 1.3rem;
   color: var(--rose-dark);
   margin: 0;
 }
-
-.romance-meter-badge {
+.rm-badge {
   border-radius: 20px;
   padding: 0.22rem 0.85rem;
   font-size: 0.82rem;
   font-weight: 700;
   white-space: nowrap;
 }
-.romance-badge-overclock { background: #fce4ec; color: #c62828; }
-.romance-badge-hot        { background: #fce4ec; color: var(--rose); }
-.romance-badge-warm       { background: #fff3e0; color: #e64a19; }
-.romance-badge-good       { background: var(--pink-pale); color: var(--rose); }
-.romance-badge-neutral    { background: var(--gray-100); color: var(--gray-600); }
-.romance-badge-cool       { background: #e3f2fd; color: #1565c0; }
-.romance-badge-cold       { background: #e3f2fd; color: #0277bd; }
-.romance-badge-dead       { background: var(--gray-100); color: var(--gray-400); }
+.rm-badge-overclock { background: #fce4ec; color: #c62828; }
+.rm-badge-hot       { background: #fce4ec; color: var(--rose); }
+.rm-badge-warm      { background: #fff3e0; color: #e64a19; }
+.rm-badge-good      { background: var(--pink-pale); color: var(--rose); }
+.rm-badge-neutral   { background: var(--gray-100); color: var(--gray-600); }
+.rm-badge-cool      { background: #e3f2fd; color: #1565c0; }
+.rm-badge-cold      { background: #e3f2fd; color: #0277bd; }
+.rm-badge-dead      { background: var(--gray-100); color: var(--gray-400); }
 
-.romance-score-big {
+.rm-score {
   font-family: 'Playfair Display', serif;
-  font-size: 2.8rem;
+  font-size: 3rem;
   font-weight: 700;
   color: var(--rose-dark);
   line-height: 1;
   margin-bottom: 1rem;
 }
-.romance-score-max {
-  font-size: 1.1rem;
-  color: var(--gray-400);
+.rm-score-denom {
   font-family: 'Lato', sans-serif;
+  font-size: 1.1rem;
   font-weight: 400;
+  color: var(--gray-400);
 }
 
 /* Factor bars */
-.romance-factors {
+.rm-factors {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  margin-bottom: 0.75rem;
+  gap: 0.45rem;
+  margin-bottom: 0.8rem;
 }
-.romance-factor {
+.rm-factor-row {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
 }
-.rf-label {
-  min-width: 145px;
+.rm-factor-label {
+  min-width: 148px;
+  flex-shrink: 0;
   color: var(--gray-600);
   font-weight: 600;
-  flex-shrink: 0;
 }
-.rf-bar-track {
+.rm-factor-track {
   flex: 1;
-  height: 8px;
+  height: 9px;
   background: var(--gray-100);
-  border-radius: 4px;
+  border-radius: 5px;
   overflow: hidden;
 }
-.rf-bar-fill {
+.rm-factor-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--pink-light), var(--pink));
-  border-radius: 4px;
-  transition: width 0.8s cubic-bezier(0.34,1.56,0.64,1);
+  border-radius: 5px;
   min-width: 2px;
 }
-.rf-score  { font-weight: 700; color: var(--rose); min-width: 42px; text-align: right; }
-.rf-max    { color: var(--gray-400); font-weight: 400; }
+.rm-factor-pts  { font-weight: 700; color: var(--rose); min-width: 44px; text-align: right; }
+.rm-factor-max  { color: var(--gray-400); font-weight: 400; }
 
 /* Correction chips */
-.romance-corrections {
+.rm-corrections {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.65rem;
 }
-.romance-correction {
+.rm-chip {
   font-size: 0.75rem;
   background: var(--pink-pale);
   border: 1px solid var(--pink-light);
@@ -1803,13 +1806,20 @@ a:hover { color: var(--pink); }
   padding: 0.15rem 0.65rem;
   color: var(--rose-dark);
 }
-.romance-correction strong { color: var(--rose); }
+.rm-chip strong { color: var(--rose); }
 
-.romance-disclaimer {
+.rm-disclaimer {
   font-size: 0.72rem;
   color: var(--gray-400);
   font-style: italic;
-  line-height: 1.4;
+  line-height: 1.5;
+}
+
+/* Responsive — stack on mobile */
+@media (max-width: 600px) {
+  .rm-card { flex-direction: column; align-items: center; text-align: center; }
+  .rm-factor-row { flex-wrap: wrap; }
+  .rm-factor-label { min-width: unset; }
 }
 
 /* ── Who picker (segmented control) ───────────────────────────────────────── */

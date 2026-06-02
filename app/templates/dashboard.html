@@ -22,81 +22,88 @@
 
 <!-- Romance Meter -->
 {% if romance %}
-<div class="romance-meter-card romance-level-{{ romance.level }}">
+{% set fill_h = (romance.score / 100 * 150) | round | int %}
+<div class="rm-card rm-lvl-{{ romance.level }}">
 
-  <!-- Thermometer SVG -->
-  <div class="therm-wrap">
-    {% set fill_h = (romance.score / 100 * 120) | round | int %}
-    <svg viewBox="0 0 44 190" width="44" height="190" class="therm-svg" aria-label="Romance thermometer {{ romance.score }}%">
+  <!-- ── Thermometer column ── -->
+  <div class="rm-therm-col">
+    <svg viewBox="0 0 90 230" width="90" height="230" aria-label="Romance Meter {{ romance.score }}/100">
       <defs>
-        <linearGradient id="therm-grad" x1="0" y1="1" x2="0" y2="0">
+        <linearGradient id="rmg" x1="0" y1="1" x2="0" y2="0">
           <stop offset="0%"   stop-color="#FF6B9D"/>
-          <stop offset="50%"  stop-color="#FF4D6D"/>
+          <stop offset="60%"  stop-color="#FF4D6D"/>
           <stop offset="100%" stop-color="#C9184A"/>
         </linearGradient>
-        <clipPath id="therm-tube-clip">
-          <rect x="15" y="8" width="14" height="122" rx="7"/>
+        <clipPath id="rm-clip">
+          <rect x="28" y="10" width="24" height="150" rx="12"/>
         </clipPath>
       </defs>
-      <!-- Tick marks -->
-      {% for pct in [25, 50, 75, 100] %}
-      {% set y = 130 - (pct / 100 * 120) | round | int %}
-      <line x1="29" y1="{{ y }}" x2="35" y2="{{ y }}" stroke="#ddd" stroke-width="1.5"/>
-      <text x="37" y="{{ y + 4 }}" font-size="7" fill="#aaa" font-family="monospace">{{ pct }}</text>
-      {% endfor %}
+
       <!-- Tube background -->
-      <rect x="15" y="8" width="14" height="122" rx="7" fill="#f3f3f3" stroke="#e0e0e0" stroke-width="1.5"/>
+      <rect x="28" y="10" width="24" height="150" rx="12"
+            fill="#f5f5f5" stroke="#e0e0e0" stroke-width="2"/>
       <!-- Mercury fill -->
-      <rect x="15" y="{{ 130 - fill_h }}" width="14" height="{{ fill_h }}"
-            fill="url(#therm-grad)" clip-path="url(#therm-tube-clip)"/>
-      <!-- Bulb connector -->
-      <rect x="15" y="126" width="14" height="14" fill="url(#therm-grad)"/>
+      <rect x="28" y="{{ 160 - fill_h }}" width="24" height="{{ fill_h }}"
+            fill="url(#rmg)" clip-path="url(#rm-clip)"/>
+      <!-- Connector to bulb -->
+      <rect x="28" y="155" width="24" height="22" fill="url(#rmg)"/>
       <!-- Bulb -->
-      <circle cx="22" cy="162" r="18" fill="url(#therm-grad)" stroke="#e0e0e0" stroke-width="1.5"/>
+      <circle cx="40" cy="196" r="26" fill="url(#rmg)" stroke="#e0e0e0" stroke-width="2"/>
       <!-- Score in bulb -->
-      <text x="22" y="167" text-anchor="middle" font-size="10" font-weight="900"
-            fill="white" font-family="'Lato',sans-serif">{{ romance.score }}</text>
+      <text x="40" y="202" text-anchor="middle" font-size="13" font-weight="900"
+            fill="white" font-family="Lato,sans-serif">{{ romance.score }}</text>
+
+      <!-- Tick marks (drawn AFTER fill so they're on top) -->
+      {% for pct, label in [(100,"100"),(75,"75"),(50,"50"),(25,"25")] %}
+      {% set ty = (10 + (1 - pct/100) * 150) | round | int %}
+      <line x1="52" y1="{{ ty }}" x2="60" y2="{{ ty }}"
+            stroke="#bbb" stroke-width="1.5" stroke-linecap="round"/>
+      <text x="63" y="{{ ty + 4 }}" font-size="8" fill="#aaa"
+            font-family="monospace" font-weight="600">{{ label }}</text>
+      {% endfor %}
     </svg>
-    <div class="therm-unit">°RM</div>
+    <div class="rm-unit-label">°RM</div>
   </div>
 
-  <!-- Right panel -->
-  <div class="romance-meter-body">
-    <div class="romance-meter-header">
-      <h2 class="romance-meter-title">Romance Meter™</h2>
-      <span class="romance-meter-badge romance-badge-{{ romance.level }}">{{ romance.label }}</span>
-    </div>
-    <div class="romance-score-big">{{ romance.score }}<span class="romance-score-max">/100</span></div>
+  <!-- ── Detail column ── -->
+  <div class="rm-detail-col">
 
-    <!-- Factor breakdown -->
-    <div class="romance-factors">
+    <div class="rm-header">
+      <h2 class="rm-title">Romance Meter™</h2>
+      <span class="rm-badge rm-badge-{{ romance.level }}">{{ romance.label }}</span>
+    </div>
+
+    <div class="rm-score">
+      {{ romance.score }}<span class="rm-score-denom">/100</span>
+    </div>
+
+    <div class="rm-factors">
       {% for key, f in romance.factors.items() %}
-      <div class="romance-factor">
-        <span class="rf-label">{{ f.label }}</span>
-        <div class="rf-bar-track">
-          <div class="rf-bar-fill" style="width: {{ (f.pts / f.max * 100) | round }}%;"></div>
+      <div class="rm-factor-row">
+        <span class="rm-factor-label">{{ f.label }}</span>
+        <div class="rm-factor-track">
+          <div class="rm-factor-fill" style="width:{{ (f.pts / f.max * 100) | round }}%"></div>
         </div>
-        <span class="rf-score">{{ f.pts }}<span class="rf-max">/{{ f.max }}</span></span>
+        <span class="rm-factor-pts">{{ f.pts }}<span class="rm-factor-max">/{{ f.max }}</span></span>
       </div>
       {% endfor %}
     </div>
 
-    <!-- Correction factors -->
     {% if romance.corrections %}
-    <div class="romance-corrections">
-      {% for label, delta in romance.corrections %}
-      <span class="romance-correction">{{ label }} <strong>{{ delta }}</strong></span>
+    <div class="rm-corrections">
+      {% for lbl, delta in romance.corrections %}
+      <span class="rm-chip">{{ lbl }} <strong>{{ delta }}</strong></span>
       {% endfor %}
     </div>
     {% endif %}
 
-    <p class="romance-disclaimer">
-      ⚠️ Proprietary Romance Coefficient™ v2.4.1 — Patent pending.
-      Not FDA approved. Results may vary. Consult a florist if score drops below 40.
+    <p class="rm-disclaimer">
+      ⚠️ Proprietary Romance Coefficient™ v2.4.1 — Patent pending. Not FDA approved.
+      Results may vary. Consult a florist if score drops below 40.
     </p>
-  </div>
 
-</div>
+  </div><!-- /.rm-detail-col -->
+</div><!-- /.rm-card -->
 {% endif %}
 
 <!-- Action bar -->
