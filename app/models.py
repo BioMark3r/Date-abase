@@ -45,6 +45,14 @@ class DateEntry(Base):
             ]
         except Exception:
             pass
+        imgs = []
+        try:
+            imgs = [
+                {"filename": i.filename, "caption": i.caption}
+                for i in (self.images or [])
+            ]
+        except Exception:
+            pass
         return {
             "id": self.id,
             "title": self.title,
@@ -57,6 +65,7 @@ class DateEntry(Base):
             "location_lon": self.location_lon,
             # new multi-location array
             "locations": locs,
+            "images": imgs,
             "what_we_did": self.what_we_did,
             "notes": self.notes,
             "rating": self.rating,

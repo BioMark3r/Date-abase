@@ -1246,21 +1246,41 @@ async def get_idea(request: Request):
 
 @app.get("/export")
 async def export_data(request: Request, db: Session = Depends(get_db)):
+    """Export everything as a ZIP: dateabase.json + uploads/ folder."""
     if not require_auth(request):
         return RedirectResponse("/", status_code=302)
-    dates = db.query(DateEntry).order_by(DateEntry.date_datetime).all()
+
+    dates = (
+        db.query(DateEntry)
+        .options(joinedload(DateEntry.images), joinedload(DateEntry.locations))
+        .order_by(DateEntry.date_datetime)
+        .all()
+    )
     comms = db.query(CommEntry).order_by(CommEntry.comm_datetime).all()
     data = {
         "export_date": datetime.now().isoformat(),
         "app": "Date-abase 💕",
+        "version": 2,
         "dates": [d.to_dict() for d in dates],
         "comms": [c.to_dict() for c in comms],
     }
     json_bytes = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
+
+    import zipfile
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("dateabase.json", json_bytes)
+        for entry in dates:
+            for img in entry.images:
+                img_path = UPLOAD_DIR / img.filename
+                if img_path.exists():
+                    zf.write(img_path, f"uploads/{img.filename}")
+    buf.seek(0)
+
     return StreamingResponse(
-        io.BytesIO(json_bytes),
-        media_type="application/json",
-        headers={"Content-Disposition": "attachment; filename=dateabase-export.json"},
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=dateabase-export.zip"},
     )
 
 
@@ -1271,7 +1291,32 @@ async def import_data(
     if not require_auth(request):
         return RedirectResponse("/", status_code=302)
     try:
-        data = json.loads(await file.read())
+        import zipfile
+        raw = await file.read()
+        fname_lower = (file.filename or "").lower()
+
+        if fname_lower.endswith(".zip") or raw[:2] == b'PK':
+            # ── ZIP import: extract images then read JSON ─────────────────────
+            with zipfile.ZipFile(io.BytesIO(raw)) as zf:
+                names = zf.namelist()
+                # Extract image files to uploads dir
+                for name in names:
+                    if name.startswith("uploads/") and not name.endswith("/"):
+                        img_filename = Path(name).name
+                        if Path(img_filename).suffix.lower() in ALLOWED_EXTENSIONS:
+                            dest = UPLOAD_DIR / img_filename
+                            if not dest.exists():   # don't overwrite existing files
+                                dest.write_bytes(zf.read(name))
+                # Read JSON (try dateabase.json first, then any .json)
+                json_name = "dateabase.json" if "dateabase.json" in names else next(
+                    (n for n in names if n.endswith(".json")), None
+                )
+                if not json_name:
+                    raise ValueError("No JSON found in ZIP")
+                data = json.loads(zf.read(json_name))
+        else:
+            # ── Plain JSON import (backward compat) ───────────────────────────
+            data = json.loads(raw)
         imported_dates = imported_comms = 0
 
         for item in data.get("dates", []):
@@ -1342,6 +1387,16 @@ async def import_data(
                     lon        = float(first_lon) if first_lon else None,
                     sort_order = 0,
                 ))
+
+            # ── Restore image records ─────────────────────────────────────────
+            for img_item in item.get("images", []):
+                img_fn = (img_item.get("filename") or "").strip()
+                if img_fn and (UPLOAD_DIR / img_fn).exists():
+                    db.add(DateImage(
+                        date_id  = entry.id,
+                        filename = img_fn,
+                        caption  = img_item.get("caption"),
+                    ))
 
             imported_dates += 1
 

@@ -110,10 +110,10 @@
 <div class="action-bar">
   <a href="/dates/new" class="btn btn-primary">➕ Log a New Date</a>
   <div class="action-bar-right">
-    <a href="/export" class="btn btn-outline">📤 Export JSON</a>
-    <label class="btn btn-outline" for="import-file">📥 Import JSON</label>
+    <a href="/export" class="btn btn-outline">📤 Export ZIP</a>
+    <label class="btn btn-outline" for="import-file">📥 Import</label>
     <form method="post" action="/import" enctype="multipart/form-data" style="display:none;" id="import-form">
-      <input type="file" id="import-file" name="file" accept=".json" onchange="document.getElementById('import-form').submit()"/>
+      <input type="file" id="import-file" name="file" accept=".json,.zip" onchange="document.getElementById('import-form').submit()"/>
     </form>
   </div>
 </div>
