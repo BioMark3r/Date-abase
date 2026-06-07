@@ -155,9 +155,10 @@ def _seed_users() -> None:
                 db.add(user)
                 db.flush()
             user.display_name = display_name
-            if raw_password:
-                if not user.hashed_password or not pwd_context.verify(raw_password, user.hashed_password):
-                    user.hashed_password = pwd_context.hash(raw_password)
+            # Only set password from env on FIRST boot (no password stored yet).
+            # After that, the user manages their password via Settings — env var is ignored.
+            if raw_password and not user.hashed_password:
+                user.hashed_password = pwd_context.hash(raw_password)
         db.commit()
     finally:
         db.close()
@@ -962,6 +963,7 @@ async def settings_page(request: Request, db: Session = Depends(get_db)):
         "request": request,
         "settings": get_settings(db),
         "saved": request.query_params.get("saved"),
+        "pw_saved": request.query_params.get("pw_saved"),
         "passkeys": current_user.passkeys if current_user else [],
         "app_domain": APP_DOMAIN,
     })
@@ -993,6 +995,42 @@ async def save_settings(
     if current_user:
         request.session["display_name"] = current_user.display_name
     return RedirectResponse("/settings?saved=1", status_code=302)
+
+
+@app.post("/settings/change-password")
+async def change_password(
+    request: Request,
+    current_password: str = Form(...),
+    new_password:     str = Form(...),
+    confirm_password: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    if not require_auth(request):
+        return RedirectResponse("/", status_code=302)
+
+    def _err(msg: str):
+        current_user = db.query(User).filter(User.id == request.session["user_id"]).first()
+        return templates.TemplateResponse("settings.html", {
+            "request": request,
+            "settings": get_settings(db),
+            "passkeys": current_user.passkeys if current_user else [],
+            "app_domain": APP_DOMAIN,
+            "pw_error": msg,
+        })
+
+    user = db.query(User).filter(User.id == request.session["user_id"]).first()
+    if not user:
+        return _err("User not found. 💔")
+    if not user.hashed_password or not pwd_context.verify(current_password, user.hashed_password):
+        return _err("Current password is incorrect. 💔")
+    if len(new_password) < 8:
+        return _err("New password must be at least 8 characters.")
+    if new_password != confirm_password:
+        return _err("New passwords don't match. Try again.")
+
+    user.hashed_password = pwd_context.hash(new_password)
+    db.commit()
+    return RedirectResponse("/settings?pw_saved=1", status_code=302)
 
 
 # ── Audit Log ─────────────────────────────────────────────────────────────────

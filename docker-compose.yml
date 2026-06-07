@@ -8,11 +8,13 @@ services:
     environment:
       - SECRET_KEY=change-me-to-something-romantic-and-secret
       # ── Partner credentials ──────────────────────────────────────────────────
-      # Change these! Use strong passwords.
+      # Default passwords work for first login. Change them in Settings > Change Password.
+      # Passwords set here only apply when a user has NO password yet (first boot).
+      # After that, passwords live in the database and env vars are ignored.
       - PARTNER1_NAME=Partner 1
-      - PARTNER1_PASSWORD=changeme1
+      - PARTNER1_PASSWORD=lovebirds1
       - PARTNER2_NAME=Partner 2
-      - PARTNER2_PASSWORD=changeme2
+      - PARTNER2_PASSWORD=lovebirds2
       # ── WebAuthn / Face ID ───────────────────────────────────────────────────
       # For Cloudflare Tunnel, set these to your tunnel domain:
       #   APP_DOMAIN=dates.yourdomain.com

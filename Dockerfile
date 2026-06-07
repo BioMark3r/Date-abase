@@ -16,11 +16,11 @@ ENV DATABASE_URL=sqlite:////data/dateabase.db
 ENV UPLOAD_DIR=/data/uploads
 ENV SECRET_KEY=change-me-to-something-very-secret
 
-# Per-partner credentials — CHANGE THESE before deploying
+# Default credentials — works out of the box, change via Settings > Change Password after first login
 ENV PARTNER1_NAME="Partner 1"
-ENV PARTNER1_PASSWORD=changeme1
+ENV PARTNER1_PASSWORD=lovebirds1
 ENV PARTNER2_NAME="Partner 2"
-ENV PARTNER2_PASSWORD=changeme2
+ENV PARTNER2_PASSWORD=lovebirds2
 
 # WebAuthn / Face ID — set to your Cloudflare Tunnel domain in production
 # e.g. APP_DOMAIN=dates.yourdomain.com  APP_ORIGIN=https://dates.yourdomain.com

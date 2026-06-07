@@ -14,6 +14,12 @@
 {% if saved %}
 <div class="alert-success">✅ Settings saved! Names updated across the app.</div>
 {% endif %}
+{% if pw_saved %}
+<div class="alert-success">🔐 Password changed successfully!</div>
+{% endif %}
+{% if pw_error %}
+<div class="alert-error">❌ {{ pw_error }}</div>
+{% endif %}
 
 <div class="settings-grid">
 
@@ -91,6 +97,36 @@
         The server only stores a public key — your Face ID is processed entirely by your phone's secure enclave.
       </div>
     </div>
+  </div>
+
+  <!-- Change Password -->
+  <div class="form-card">
+    <form method="post" action="/settings/change-password">
+      <div class="form-section">
+        <h3 class="form-section-title">🔒 Change Password</h3>
+        <p style="color:var(--gray-600); font-size:0.9rem; margin-bottom:1.25rem;">
+          Changing only your own password. The other partner manages theirs separately.
+        </p>
+        <div class="form-group">
+          <label for="current_password">Current Password</label>
+          <input type="password" id="current_password" name="current_password"
+                 class="form-input" required autocomplete="current-password" />
+        </div>
+        <div class="form-group">
+          <label for="new_password">New Password <small style="color:var(--gray-400)">(min 8 chars)</small></label>
+          <input type="password" id="new_password" name="new_password"
+                 class="form-input" required minlength="8" autocomplete="new-password" />
+        </div>
+        <div class="form-group">
+          <label for="confirm_password">Confirm New Password</label>
+          <input type="password" id="confirm_password" name="confirm_password"
+                 class="form-input" required minlength="8" autocomplete="new-password" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">🔒 Change Password</button>
+      </div>
+    </form>
   </div>
 
 </div><!-- /.settings-grid -->
