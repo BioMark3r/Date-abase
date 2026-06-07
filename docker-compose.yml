@@ -7,7 +7,18 @@ services:
       - dateabase_data:/data
     environment:
       - SECRET_KEY=change-me-to-something-romantic-and-secret
-      - SHARED_PASSWORD=lovebirds
+      # ── Partner credentials ──────────────────────────────────────────────────
+      # Change these! Use strong passwords.
+      - PARTNER1_NAME=Partner 1
+      - PARTNER1_PASSWORD=changeme1
+      - PARTNER2_NAME=Partner 2
+      - PARTNER2_PASSWORD=changeme2
+      # ── WebAuthn / Face ID ───────────────────────────────────────────────────
+      # For Cloudflare Tunnel, set these to your tunnel domain:
+      #   APP_DOMAIN=dates.yourdomain.com
+      #   APP_ORIGIN=https://dates.yourdomain.com
+      - APP_DOMAIN=localhost
+      - APP_ORIGIN=http://localhost:8000
       - DATABASE_URL=sqlite:////data/dateabase.db
     restart: unless-stopped
 

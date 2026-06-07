@@ -118,6 +118,35 @@ class AppSettings(Base):
     value = Column(Text, nullable=True)
 
 
+class User(Base):
+    """One row per partner (partner1 / partner2).  Seeded from env vars on startup."""
+    __tablename__ = "users"
+
+    id              = Column(Integer, primary_key=True, index=True)
+    username        = Column(String(50),  unique=True, nullable=False)   # "partner1" / "partner2"
+    display_name    = Column(String(200), nullable=False, default="")
+    hashed_password = Column(String(255), nullable=True)
+    created_at      = Column(DateTime, default=func.now())
+
+    passkeys = relationship("WebAuthnCredential", back_populates="user",
+                            cascade="all, delete-orphan")
+
+
+class WebAuthnCredential(Base):
+    """Stores a registered Face ID / Touch ID / passkey for one user."""
+    __tablename__ = "webauthn_credentials"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    user_id       = Column(Integer, ForeignKey("users.id"), nullable=False)
+    credential_id = Column(Text, nullable=False, unique=True)   # base64url
+    public_key    = Column(Text, nullable=False)                # base64 CBOR key
+    sign_count    = Column(Integer, default=0)
+    device_name   = Column(String(200), nullable=True)
+    created_at    = Column(DateTime, default=func.now())
+
+    user = relationship("User", back_populates="passkeys")
+
+
 class AuditLog(Base):
     """Records every create / update / delete across dates and comms."""
     __tablename__ = "audit_log"

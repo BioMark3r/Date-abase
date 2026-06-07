@@ -1,46 +1,156 @@
 {% extends "base.html" %}
 {% block title %}Settings ⚙️ — Date-abase{% endblock %}
 
+{% block head %}
+<script src="https://unpkg.com/@simplewebauthn/browser@9.0.1/dist/bundle/index.umd.min.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
   <h1>⚙️ Settings</h1>
-  <p class="page-subtitle">Configure the app — names show up in the audit log and on every form</p>
+  <p class="page-subtitle">Configure the app — partner names appear in the audit log</p>
 </div>
 
 {% if saved %}
 <div class="alert-success">✅ Settings saved! Names updated across the app.</div>
 {% endif %}
 
-<div class="form-card" style="max-width: 520px;">
-  <form method="post" action="/settings">
+<div class="settings-grid">
 
-    <div class="form-section">
-      <h3 class="form-section-title">💕 Partner Names</h3>
-      <p style="color:var(--gray-600); font-size:0.9rem; margin-bottom:1.25rem;">
-        These names appear on every form's "Logged by" toggle and in the romance audit log.
-      </p>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label for="partner1_name">Partner 1</label>
-          <input type="text" id="partner1_name" name="partner1_name" class="form-input"
-            placeholder="e.g. Alice"
-            value="{{ settings.partner1_name }}" maxlength="40" />
-        </div>
-        <div class="form-group">
-          <label for="partner2_name">Partner 2</label>
-          <input type="text" id="partner2_name" name="partner2_name" class="form-input"
-            placeholder="e.g. Bob"
-            value="{{ settings.partner2_name }}" maxlength="40" />
+  <!-- Partner Names -->
+  <div class="form-card">
+    <form method="post" action="/settings">
+      <div class="form-section">
+        <h3 class="form-section-title">💕 Partner Names</h3>
+        <p style="color:var(--gray-600); font-size:0.9rem; margin-bottom:1.25rem;">
+          These names appear in the romance audit log and identify who made each change.
+        </p>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="partner1_name">Partner 1</label>
+            <input type="text" id="partner1_name" name="partner1_name" class="form-input"
+              placeholder="e.g. Alice" value="{{ settings.partner1_name }}" maxlength="40" />
+          </div>
+          <div class="form-group">
+            <label for="partner2_name">Partner 2</label>
+            <input type="text" id="partner2_name" name="partner2_name" class="form-input"
+              placeholder="e.g. Bob" value="{{ settings.partner2_name }}" maxlength="40" />
+          </div>
         </div>
       </div>
-    </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">💾 Save Settings</button>
+        <a href="/dashboard" class="btn btn-ghost">Cancel</a>
+      </div>
+    </form>
+  </div>
 
-    <div class="form-actions">
-      <button type="submit" class="btn btn-primary">💾 Save Settings</button>
-      <a href="/dashboard" class="btn btn-ghost">Cancel</a>
-    </div>
+  <!-- Face ID / Passkey Management -->
+  <div class="form-card">
+    <div class="form-section">
+      <h3 class="form-section-title">🔑 Face ID &amp; Biometric Login</h3>
+      <p style="color:var(--gray-600); font-size:0.9rem; margin-bottom:1.25rem;">
+        Register your device's Face ID or fingerprint for one-tap login. Works on iPhone, Android, and laptops with biometrics.
+        Requires HTTPS — works automatically via Cloudflare Tunnel.
+      </p>
 
-  </form>
-</div>
+      {% if not passkeys %}
+      <p class="passkey-empty">No passkeys registered yet. Add one below 👇</p>
+      {% else %}
+      <div class="passkey-list">
+        {% for pk in passkeys %}
+        <div class="passkey-row" id="pk-row-{{ pk.id }}">
+          <div class="passkey-info">
+            <span class="passkey-icon">📱</span>
+            <div>
+              <div class="passkey-name">{{ pk.device_name or "Device" }}</div>
+              <div class="passkey-date">Registered {{ pk.created_at.strftime('%b %d, %Y') }}</div>
+            </div>
+          </div>
+          <button type="button" class="btn btn-danger btn-sm"
+                  onclick="deletePasskey({{ pk.id }})">🗑️ Remove</button>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div style="margin-top:1.25rem;">
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label for="device-name-input">Device name (optional)</label>
+          <input type="text" id="device-name-input" class="form-input"
+                 placeholder='e.g. "My iPhone"' maxlength="100" />
+        </div>
+        <button type="button" class="btn btn-primary" id="register-passkey-btn" onclick="registerPasskey()">
+          🔑 Register This Device
+        </button>
+        <div id="passkey-status" style="margin-top:0.75rem; display:none;"></div>
+      </div>
+
+      <div class="passkey-note" style="margin-top:1rem;">
+        <strong>🔒 How it works:</strong> Your biometric data never leaves your device.
+        The server only stores a public key — your Face ID is processed entirely by your phone's secure enclave.
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.settings-grid -->
+{% endblock %}
+
+{% block scripts %}
+<script>
+  async function registerPasskey() {
+    const btn = document.getElementById('register-passkey-btn');
+    const statusDiv = document.getElementById('passkey-status');
+    const deviceName = document.getElementById('device-name-input').value.trim();
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Waiting for biometric…';
+    statusDiv.style.display = 'none';
+
+    try {
+      const optResp = await fetch('/auth/passkey/register-options');
+      if (!optResp.ok) throw new Error('Could not get registration options');
+      const opts = await optResp.json();
+
+      const credential = await SimpleWebAuthnBrowser.startRegistration(opts);
+      credential.device_name = deviceName || 'iPhone / Face ID';
+
+      const verResp = await fetch('/auth/passkey/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credential),
+      });
+      const result = await verResp.json();
+      if (result.ok) {
+        statusDiv.className = 'alert-success';
+        statusDiv.textContent = '✅ Face ID registered! You can now sign in with biometrics.';
+        statusDiv.style.display = 'block';
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        throw new Error(result.detail || 'Registration failed');
+      }
+    } catch (e) {
+      statusDiv.className = 'alert-error';
+      if (e.name === 'NotAllowedError') {
+        statusDiv.textContent = '❌ Biometric prompt was cancelled.';
+      } else if (e.name === 'InvalidStateError') {
+        statusDiv.textContent = '⚠️ This device is already registered.';
+      } else {
+        statusDiv.textContent = `❌ ${e.message}`;
+      }
+      statusDiv.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔑 Register This Device';
+    }
+  }
+
+  async function deletePasskey(credId) {
+    if (!confirm('Remove this passkey? You can re-register at any time.')) return;
+    const resp = await fetch(`/auth/passkey/${credId}`, { method: 'DELETE' });
+    if ((await resp.json()).ok) {
+      document.getElementById(`pk-row-${credId}`)?.remove();
+    }
+  }
+</script>
 {% endblock %}

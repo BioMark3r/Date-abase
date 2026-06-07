@@ -4,6 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Date-abase 💕 — Welcome</title>
+  <link rel="manifest" href="/static/manifest.json" />
+  <meta name="theme-color" content="#FF6B9D" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Date-abase" />
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/style.css" />
@@ -22,67 +28,42 @@
     <!-- Hero graphic: geeky terminal window -->
     <div class="splash-graphic">
       <svg viewBox="0 0 440 250" xmlns="http://www.w3.org/2000/svg" class="splash-svg">
-        <!-- Terminal window shell -->
         <rect x="10" y="10" width="420" height="230" rx="10" fill="#1e1e2e" filter="url(#shadow)"/>
-
-        <!-- Title bar -->
         <rect x="10" y="10" width="420" height="34" rx="10" fill="#2a2a3e"/>
         <rect x="10" y="30"  width="420" height="14" fill="#2a2a3e"/>
-
-        <!-- Traffic-light dots -->
         <circle cx="34"  cy="27" r="7" fill="#FF5F57"/>
         <circle cx="56"  cy="27" r="7" fill="#FFBD2E"/>
         <circle cx="78"  cy="27" r="7" fill="#28C840"/>
-
-        <!-- Title bar text -->
         <text x="220" y="32" font-family="'Courier New',Courier,monospace" font-size="11"
               fill="#8888bb" text-anchor="middle" letter-spacing="1">love.exe  —  terminal  v2.❤️.0</text>
-
-        <!-- Scanline overlay (decorative) -->
         <rect x="10" y="44" width="420" height="196" rx="0" fill="url(#scanlines)" opacity="0.04"/>
-
-        <!-- Line 1 -->
         <text x="28" y="68" font-family="'Courier New',Courier,monospace" font-size="12" fill="#FF6B9D">$</text>
         <text x="42" y="68" font-family="'Courier New',Courier,monospace" font-size="12" fill="#cdd6f4"> ./date-abase --init-relationship</text>
-
-        <!-- Line 2 -->
         <text x="28" y="90" font-family="'Courier New',Courier,monospace" font-size="12" fill="#6c7086">▶</text>
         <text x="42" y="90" font-family="'Courier New',Courier,monospace" font-size="12" fill="#a6e3a1"> Scanning for chemistry</text>
         <text x="296" y="90" font-family="'Courier New',Courier,monospace" font-size="12" fill="#a6e3a1">........</text>
         <text x="366" y="90" font-family="'Courier New',Courier,monospace" font-size="12" fill="#a6e3a1"> ✓</text>
-
-        <!-- Line 3 -->
         <text x="28" y="111" font-family="'Courier New',Courier,monospace" font-size="12" fill="#6c7086">▶</text>
         <text x="42" y="111" font-family="'Courier New',Courier,monospace" font-size="12" fill="#cdd6f4"> Compatibility: </text>
         <text x="172" y="111" font-family="'Courier New',Courier,monospace" font-size="12" fill="#FF6B9D">0xFF%</text>
         <text x="220" y="111" font-family="'Courier New',Courier,monospace" font-size="12" fill="#cdd6f4">  [</text>
         <text x="242" y="111" font-family="'Courier New',Courier,monospace" font-size="12" fill="#f38ba8">████████████</text>
         <text x="338" y="111" font-family="'Courier New',Courier,monospace" font-size="12" fill="#cdd6f4">]</text>
-
-        <!-- Line 4: error line (funny) -->
         <text x="28" y="132" font-family="'Courier New',Courier,monospace" font-size="12" fill="#f38ba8">!</text>
         <text x="42" y="132" font-family="'Courier New',Courier,monospace" font-size="12" fill="#f38ba8"> ERR: SmileOverflowException — cannot stop smiling</text>
-
-        <!-- Line 5 -->
         <text x="28" y="153" font-family="'Courier New',Courier,monospace" font-size="12" fill="#6c7086">▶</text>
         <text x="42" y="153" font-family="'Courier New',Courier,monospace" font-size="12" fill="#cdd6f4"> git commit -am </text>
         <text x="172" y="153" font-family="'Courier New',Courier,monospace" font-size="12" fill="#a6e3a1">"💕 add: us"</text>
         <text x="280" y="153" font-family="'Courier New',Courier,monospace" font-size="12" fill="#a6e3a1">  ✓ 1 heart changed</text>
-
-        <!-- Line 6 -->
         <text x="28" y="174" font-family="'Courier New',Courier,monospace" font-size="12" fill="#6c7086">▶</text>
         <text x="42" y="174" font-family="'Courier New',Courier,monospace" font-size="12" fill="#cdd6f4"> git push origin </text>
         <text x="178" y="174" font-family="'Courier New',Courier,monospace" font-size="12" fill="#FF6B9D">main</text>
         <text x="218" y="174" font-family="'Courier New',Courier,monospace" font-size="12" fill="#cdd6f4"> --force  </text>
         <text x="296" y="174" font-family="'Courier New',Courier,monospace" font-size="12" fill="#a6e3a1"> ✓ No going back. 💕</text>
-
-        <!-- Line 7: prompt + blinking cursor -->
         <text x="28" y="218" font-family="'Courier New',Courier,monospace" font-size="12" fill="#FF6B9D">$</text>
         <rect x="42" y="205" width="9" height="14" fill="#FF6B9D" rx="1" opacity="0.9">
           <animate attributeName="opacity" values="0.9;0;0.9" dur="1.1s" repeatCount="indefinite"/>
         </rect>
-
-        <!-- Drop shadow filter -->
         <defs>
           <filter id="shadow" x="-5%" y="-5%" width="110%" height="120%">
             <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#C9184A" flood-opacity="0.18"/>
@@ -100,30 +81,51 @@
       <span class="badge-fun">💕 NULL → FULL</span>
     </p>
 
-    <!-- Login form -->
+    <!-- Login card -->
     <div class="login-card">
       <h2>🔐 Enter the Love Lab</h2>
-      <p class="login-hint">Authorized personnel only. (Hint: it's a cute word.)</p>
 
       {% if error %}
       <div class="alert-error">{{ error }}</div>
       {% endif %}
 
-      <form method="post" action="/login" class="login-form">
-        <div class="form-group">
-          <input
-            type="password"
-            name="password"
-            placeholder="Secret password 🤫"
-            class="form-input"
-            autofocus
-            required
-          />
+      <!-- Step 1: Face ID (shown if WebAuthn supported, hidden via JS if not) -->
+      <div id="faceid-section">
+        <button type="button" class="btn btn-faceid btn-lg w-full" id="faceid-btn" onclick="doFaceID()">
+          <span class="faceid-icon">🔑</span> Sign in with Face ID / Biometrics
+        </button>
+        <div class="or-divider"><span>or sign in with password</span></div>
+      </div>
+
+      <!-- Step 2: Who picker -->
+      <div id="who-section">
+        <p class="login-hint">Who are you?</p>
+        <div class="who-buttons">
+          <button type="button" class="who-btn" onclick="selectUser('partner1', '{{ partner1_name }}')">
+            💕 {{ partner1_name }}
+          </button>
+          <button type="button" class="who-btn" onclick="selectUser('partner2', '{{ partner2_name }}')">
+            💕 {{ partner2_name }}
+          </button>
         </div>
-        <button type="submit" class="btn btn-primary btn-lg">
-          💕 Enter Date-abase
+      </div>
+
+      <!-- Step 3: Password form (revealed after who selection) -->
+      <form method="post" action="/login" class="login-form" id="pw-form" style="display:none;">
+        <input type="hidden" name="username" id="username-hidden" value="" />
+        <p class="login-hint" id="greeting-text"></p>
+        <div class="form-group">
+          <input type="password" name="password" id="pw-input"
+                 placeholder="Password 🤫" class="form-input" required />
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg w-full">💕 Sign In</button>
+        <button type="button" class="btn btn-ghost" style="margin-top:0.5rem; width:100%;" onclick="resetUser()">
+          ← Back
         </button>
       </form>
+
+      <!-- WebAuthn error -->
+      <div id="webauthn-error" class="alert-error" style="display:none; margin-top:0.75rem;"></div>
     </div>
 
   </div>
@@ -132,5 +134,59 @@
     <p>💕 Powered by love, questionable science, and two hearts on a collision course</p>
   </footer>
 
+<script src="https://unpkg.com/@simplewebauthn/browser@9.0.1/dist/bundle/index.umd.min.js"></script>
+<script>
+  // Hide Face ID button if WebAuthn not supported
+  if (!window.PublicKeyCredential) {
+    document.getElementById('faceid-section').style.display = 'none';
+  }
+
+  function selectUser(username, displayName) {
+    document.getElementById('username-hidden').value = username;
+    document.getElementById('greeting-text').textContent = `👋 Hey ${displayName}!`;
+    document.getElementById('who-section').style.display = 'none';
+    document.getElementById('faceid-section').style.display = 'none';
+    document.getElementById('pw-form').style.display = 'block';
+    document.getElementById('pw-input').focus();
+  }
+
+  function resetUser() {
+    document.getElementById('who-section').style.display = 'block';
+    document.getElementById('faceid-section').style.display = window.PublicKeyCredential ? 'block' : 'none';
+    document.getElementById('pw-form').style.display = 'none';
+    document.getElementById('webauthn-error').style.display = 'none';
+  }
+
+  async function doFaceID() {
+    const errDiv = document.getElementById('webauthn-error');
+    errDiv.style.display = 'none';
+    try {
+      const optResp = await fetch('/auth/passkey/auth-options');
+      if (!optResp.ok) throw new Error('Could not get auth options');
+      const opts = await optResp.json();
+      const credential = await SimpleWebAuthnBrowser.startAuthentication(opts);
+      const verResp = await fetch('/auth/passkey/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credential),
+      });
+      const result = await verResp.json();
+      if (result.ok) {
+        window.location.href = result.redirect || '/dashboard';
+      } else {
+        throw new Error(result.detail || 'Authentication failed');
+      }
+    } catch (e) {
+      if (e.name === 'NotAllowedError') {
+        errDiv.textContent = '❌ Face ID was cancelled or not allowed.';
+      } else if (e.name === 'InvalidStateError') {
+        errDiv.textContent = '⚠️ No passkey found. Please sign in with password first, then register Face ID in Settings.';
+      } else {
+        errDiv.textContent = `❌ ${e.message}`;
+      }
+      errDiv.style.display = 'block';
+    }
+  }
+</script>
 </body>
 </html>

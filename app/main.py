@@ -2,6 +2,7 @@ import os
 import json
 import io
 import uuid
+import base64
 import shutil
 import math
 import statistics
@@ -15,23 +16,56 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy.orm import Session, joinedload
+from passlib.context import CryptContext
+from webauthn import (
+    generate_registration_options,
+    verify_registration_response,
+    generate_authentication_options,
+    verify_authentication_response,
+    options_to_json,
+)
+from webauthn.helpers.structs import (
+    AuthenticatorSelectionCriteria,
+    AuthenticatorAttachment,
+    ResidentKeyRequirement,
+    UserVerificationRequirement,
+    PublicKeyCredentialDescriptor,
+)
 
-from .database import engine, get_db, Base
-from .models import DateEntry, DateImage, DateLocation, CommEntry, AppSettings, AuditLog
+from .database import engine, get_db, Base, SessionLocal
+from .models import DateEntry, DateImage, DateLocation, CommEntry, AppSettings, AuditLog, User, WebAuthnCredential
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Date-abase 💕")
 
-SECRET_KEY      = os.getenv("SECRET_KEY",      "super-secret-love-key-change-me")
-SHARED_PASSWORD = os.getenv("SHARED_PASSWORD", "lovebirds")
-UPLOAD_DIR      = Path(os.getenv("UPLOAD_DIR", "./data/uploads"))
+SECRET_KEY  = os.getenv("SECRET_KEY",  "super-secret-love-key-change-me")
+UPLOAD_DIR  = Path(os.getenv("UPLOAD_DIR", "./data/uploads"))
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+# Per-partner credentials (set in docker-compose.yml / env)
+PARTNER1_NAME     = os.getenv("PARTNER1_NAME",     "Partner 1")
+PARTNER2_NAME     = os.getenv("PARTNER2_NAME",     "Partner 2")
+PARTNER1_PASSWORD = os.getenv("PARTNER1_PASSWORD", "")
+PARTNER2_PASSWORD = os.getenv("PARTNER2_PASSWORD", "")
+
+# WebAuthn / Face ID
+APP_DOMAIN  = os.getenv("APP_DOMAIN",  "localhost")            # e.g. dates.example.com
+APP_ORIGIN  = os.getenv("APP_ORIGIN",  "http://localhost:8000") # e.g. https://dates.example.com
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic"}
 MAX_IMAGE_BYTES    = 15 * 1024 * 1024  # 15 MB
 
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, max_age=86400)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+_is_prod = APP_DOMAIN != "localhost"
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SECRET_KEY,
+    max_age=86400 * 30,   # 30 days
+    https_only=_is_prod,  # Secure flag in production (HTTPS only)
+    same_site="lax",
+)
 app.mount("/static",  StaticFiles(directory="app/static"),   name="static")
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
@@ -79,10 +113,59 @@ HEIGHT_IDEAS = [
 ]
 
 
+# ── WebAuthn helpers ─────────────────────────────────────────────────────────
+
+def _b64url_encode(b: bytes) -> str:
+    return base64.urlsafe_b64encode(b).rstrip(b'=').decode()
+
+def _b64url_decode(s: str) -> bytes:
+    pad = 4 - len(s) % 4
+    return base64.urlsafe_b64decode(s + ('=' * (pad % 4)))
+
+def _parse_webauthn_credential(model_class, data: dict):
+    """Pydantic v1/v2 compatible model parse."""
+    try:
+        return model_class.model_validate(data)   # pydantic v2
+    except AttributeError:
+        return model_class.parse_obj(data)        # pydantic v1
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def require_auth(request: Request) -> bool:
-    return bool(request.session.get("authenticated"))
+    return bool(request.session.get("user_id"))
+
+def session_display_name(request: Request) -> str:
+    return request.session.get("display_name", "Unknown")
+
+
+# ── User seeding on startup ───────────────────────────────────────────────────
+
+def _seed_users() -> None:
+    """Create / sync partner users from env vars.  Called once at startup."""
+    db = SessionLocal()
+    try:
+        for username, display_name, raw_password in [
+            ("partner1", PARTNER1_NAME, PARTNER1_PASSWORD),
+            ("partner2", PARTNER2_NAME, PARTNER2_PASSWORD),
+        ]:
+            user = db.query(User).filter(User.username == username).first()
+            if not user:
+                user = User(username=username, display_name=display_name)
+                db.add(user)
+                db.flush()
+            user.display_name = display_name
+            if raw_password:
+                if not user.hashed_password or not pwd_context.verify(raw_password, user.hashed_password):
+                    user.hashed_password = pwd_context.hash(raw_password)
+        db.commit()
+    finally:
+        db.close()
+
+
+@app.on_event("startup")
+async def startup_event():
+    _seed_users()
 
 
 # ── Settings & audit helpers ──────────────────────────────────────────────────
@@ -187,27 +270,168 @@ async def save_upload(file: UploadFile) -> str | None:
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
-async def splash(request: Request):
-    if request.session.get("authenticated"):
+async def splash(request: Request, db: Session = Depends(get_db)):
+    if require_auth(request):
         return RedirectResponse("/dashboard", status_code=302)
-    return templates.TemplateResponse("splash.html", {"request": request, "error": None})
+    settings = get_settings(db)
+    return templates.TemplateResponse("splash.html", {
+        "request": request,
+        "error": None,
+        "partner1_name": settings["partner1_name"],
+        "partner2_name": settings["partner2_name"],
+    })
 
 
 @app.post("/login")
-async def login(request: Request, password: str = Form(...)):
-    if password == SHARED_PASSWORD:
-        request.session["authenticated"] = True
-        return RedirectResponse("/dashboard", status_code=302)
-    return templates.TemplateResponse("splash.html", {
+async def login(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    settings = get_settings(db)
+    ctx = {
         "request": request,
-        "error": "Wrong password, babe. Try again. 💔",
-    })
+        "partner1_name": settings["partner1_name"],
+        "partner2_name": settings["partner2_name"],
+    }
+    user = db.query(User).filter(User.username == username).first()
+    if not user or not user.hashed_password:
+        return templates.TemplateResponse("splash.html", {**ctx, "error": "Invalid credentials. 💔"})
+    if not pwd_context.verify(password, user.hashed_password):
+        return templates.TemplateResponse("splash.html", {**ctx, "error": "Wrong password. Try again. 💔"})
+    request.session["user_id"]      = user.id
+    request.session["username"]     = user.username
+    request.session["display_name"] = user.display_name
+    return RedirectResponse("/dashboard", status_code=302)
 
 
 @app.get("/logout")
 async def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/", status_code=302)
+
+
+# ── Passkey / WebAuthn (Face ID) endpoints ────────────────────────────────────
+
+@app.get("/auth/passkey/register-options")
+async def passkey_register_options(request: Request, db: Session = Depends(get_db)):
+    if not require_auth(request):
+        raise HTTPException(401, "Not authenticated")
+    user = db.query(User).filter(User.id == request.session["user_id"]).first()
+    existing = [
+        PublicKeyCredentialDescriptor(id=_b64url_decode(c.credential_id))
+        for c in (user.passkeys or [])
+    ]
+    options = generate_registration_options(
+        rp_id=APP_DOMAIN,
+        rp_name="Date-abase 💕",
+        user_id=str(user.id).encode(),
+        user_name=user.username,
+        user_display_name=user.display_name,
+        authenticator_selection=AuthenticatorSelectionCriteria(
+            authenticator_attachment=AuthenticatorAttachment.PLATFORM,
+            resident_key=ResidentKeyRequirement.REQUIRED,
+            user_verification=UserVerificationRequirement.REQUIRED,
+        ),
+        exclude_credentials=existing,
+    )
+    request.session["reg_challenge"] = _b64url_encode(options.challenge)
+    return JSONResponse(json.loads(options_to_json(options)))
+
+
+@app.post("/auth/passkey/register")
+async def passkey_register(request: Request, db: Session = Depends(get_db)):
+    if not require_auth(request):
+        raise HTTPException(401)
+    body = await request.json()
+    challenge_b64 = request.session.pop("reg_challenge", None)
+    if not challenge_b64:
+        raise HTTPException(400, "No registration challenge in session")
+    try:
+        from webauthn.helpers.structs import RegistrationCredential
+        reg_cred = _parse_webauthn_credential(RegistrationCredential, body)
+        verification = verify_registration_response(
+            credential=reg_cred,
+            expected_challenge=_b64url_decode(challenge_b64),
+            expected_rp_id=APP_DOMAIN,
+            expected_origin=APP_ORIGIN,
+        )
+    except Exception as exc:
+        raise HTTPException(400, f"Registration failed: {exc}")
+    cred_id  = _b64url_encode(verification.credential_id)
+    pub_key  = base64.b64encode(verification.credential_public_key).decode()
+    # Replace if same credential re-registered
+    db.query(WebAuthnCredential).filter(WebAuthnCredential.credential_id == cred_id).delete()
+    db.add(WebAuthnCredential(
+        user_id=request.session["user_id"],
+        credential_id=cred_id,
+        public_key=pub_key,
+        sign_count=verification.sign_count,
+        device_name=body.get("device_name") or "iPhone / Face ID",
+    ))
+    db.commit()
+    return JSONResponse({"ok": True})
+
+
+@app.get("/auth/passkey/auth-options")
+async def passkey_auth_options(request: Request):
+    """Discoverable-credential flow — no username needed; Face ID picks the account."""
+    options = generate_authentication_options(
+        rp_id=APP_DOMAIN,
+        user_verification=UserVerificationRequirement.REQUIRED,
+    )
+    request.session["auth_challenge"] = _b64url_encode(options.challenge)
+    return JSONResponse(json.loads(options_to_json(options)))
+
+
+@app.post("/auth/passkey/auth")
+async def passkey_auth(request: Request, db: Session = Depends(get_db)):
+    body = await request.json()
+    challenge_b64 = request.session.pop("auth_challenge", None)
+    if not challenge_b64:
+        raise HTTPException(400, "No auth challenge in session")
+    cred_id_str = body.get("id") or body.get("rawId", "")
+    stored = db.query(WebAuthnCredential).filter(
+        WebAuthnCredential.credential_id == cred_id_str
+    ).first()
+    if not stored:
+        raise HTTPException(400, "Unknown credential — register this device first")
+    try:
+        from webauthn.helpers.structs import AuthenticationCredential
+        auth_cred = _parse_webauthn_credential(AuthenticationCredential, body)
+        verification = verify_authentication_response(
+            credential=auth_cred,
+            expected_challenge=_b64url_decode(challenge_b64),
+            expected_rp_id=APP_DOMAIN,
+            expected_origin=APP_ORIGIN,
+            credential_public_key=base64.b64decode(stored.public_key),
+            credential_current_sign_count=stored.sign_count,
+            require_user_verification=True,
+        )
+    except Exception as exc:
+        raise HTTPException(400, f"Authentication failed: {exc}")
+    stored.sign_count = verification.new_sign_count
+    db.commit()
+    user = stored.user
+    request.session["user_id"]      = user.id
+    request.session["username"]     = user.username
+    request.session["display_name"] = user.display_name
+    return JSONResponse({"ok": True, "redirect": "/dashboard"})
+
+
+@app.delete("/auth/passkey/{cred_id}")
+async def delete_passkey(request: Request, cred_id: int, db: Session = Depends(get_db)):
+    if not require_auth(request):
+        raise HTTPException(401)
+    cred = db.query(WebAuthnCredential).filter(
+        WebAuthnCredential.id == cred_id,
+        WebAuthnCredential.user_id == request.session["user_id"],
+    ).first()
+    if cred:
+        db.delete(cred)
+        db.commit()
+    return JSONResponse({"ok": True})
 
 
 # ── Romance Meter ─────────────────────────────────────────────────────────────
@@ -368,7 +592,6 @@ async def create_date(
     what_we_did:         str          = Form(""),
     notes:               str          = Form(""),
     rating:              int          = Form(5),
-    changed_by:          str          = Form(""),
     locations_json:      str          = Form(""),
     images:              List[UploadFile] = File(default=[]),
     db: Session = Depends(get_db),
@@ -420,7 +643,7 @@ async def create_date(
         if fname:
             db.add(DateImage(date_id=entry.id, filename=fname))
 
-    add_audit(db, changed_by=changed_by or "Unknown", action="created",
+    add_audit(db, changed_by=session_display_name(request), action="created",
               entity_type="date", entity_id=entry.id, entity_title=entry.title)
     db.commit()
 
@@ -494,7 +717,6 @@ async def update_date(
     what_we_did:         str          = Form(""),
     notes:               str          = Form(""),
     rating:              int          = Form(5),
-    changed_by:          str          = Form(""),
     locations_json:      str          = Form(""),
     delete_images:       str          = Form(""),
     images:              List[UploadFile] = File(default=[]),
@@ -582,7 +804,7 @@ async def update_date(
         "rating":              entry.rating,
     }
     diff = compute_diff(old_vals, new_vals)
-    add_audit(db, changed_by=changed_by or "Unknown", action="updated",
+    add_audit(db, changed_by=session_display_name(request), action="updated",
               entity_type="date", entity_id=entry.id, entity_title=entry.title,
               changes=diff if diff else None)
     db.commit()
@@ -592,7 +814,6 @@ async def update_date(
 @app.post("/dates/{entry_id}/delete")
 async def delete_date(
     request: Request, entry_id: int,
-    changed_by: str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not require_auth(request):
@@ -604,7 +825,7 @@ async def delete_date(
         .first()
     )
     if entry:
-        add_audit(db, changed_by=changed_by or "Unknown", action="deleted",
+        add_audit(db, changed_by=session_display_name(request), action="deleted",
                   entity_type="date", entity_id=entry.id, entity_title=entry.title)
         for img in entry.images:
             (UPLOAD_DIR / img.filename).unlink(missing_ok=True)
@@ -641,7 +862,6 @@ async def create_comm(
     comm_datetime: str = Form(...),
     comm_type:     str = Form(...),
     description:   str = Form(...),
-    changed_by:    str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not require_auth(request):
@@ -658,7 +878,7 @@ async def create_comm(
     db.add(entry)
     db.commit()
     db.refresh(entry)
-    add_audit(db, changed_by=changed_by or "Unknown", action="created",
+    add_audit(db, changed_by=session_display_name(request), action="created",
               entity_type="comm", entity_id=entry.id,
               entity_title=f"{comm_type}: {description[:60]}")
     db.commit()
@@ -685,7 +905,6 @@ async def update_comm(
     comm_datetime: str = Form(...),
     comm_type:     str = Form(...),
     description:   str = Form(...),
-    changed_by:    str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not require_auth(request):
@@ -707,7 +926,7 @@ async def update_comm(
     entry.description   = description
     new_vals = {"comm_datetime": str(entry.comm_datetime), "comm_type": entry.comm_type, "description": entry.description}
     diff = compute_diff(old_vals, new_vals)
-    add_audit(db, changed_by=changed_by or "Unknown", action="updated",
+    add_audit(db, changed_by=session_display_name(request), action="updated",
               entity_type="comm", entity_id=entry.id,
               entity_title=f"{comm_type}: {description[:60]}",
               changes=diff if diff else None)
@@ -718,14 +937,13 @@ async def update_comm(
 @app.post("/comms/{entry_id}/delete")
 async def delete_comm(
     request: Request, entry_id: int,
-    changed_by: str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not require_auth(request):
         return RedirectResponse("/", status_code=302)
     entry = db.query(CommEntry).filter(CommEntry.id == entry_id).first()
     if entry:
-        add_audit(db, changed_by=changed_by or "Unknown", action="deleted",
+        add_audit(db, changed_by=session_display_name(request), action="deleted",
                   entity_type="comm", entity_id=entry.id,
                   entity_title=f"{entry.comm_type}: {entry.description[:60]}")
         db.delete(entry)
@@ -739,10 +957,13 @@ async def delete_comm(
 async def settings_page(request: Request, db: Session = Depends(get_db)):
     if not require_auth(request):
         return RedirectResponse("/", status_code=302)
+    current_user = db.query(User).filter(User.id == request.session["user_id"]).first()
     return templates.TemplateResponse("settings.html", {
         "request": request,
         "settings": get_settings(db),
         "saved": request.query_params.get("saved"),
+        "passkeys": current_user.passkeys if current_user else [],
+        "app_domain": APP_DOMAIN,
     })
 
 
@@ -761,7 +982,16 @@ async def save_settings(
             row.value = val or DEFAULT_SETTINGS[key]
         else:
             db.add(AppSettings(key=key, value=val or DEFAULT_SETTINGS[key]))
+    # Keep User.display_name in sync with settings
+    p1 = db.query(User).filter(User.username == "partner1").first()
+    p2 = db.query(User).filter(User.username == "partner2").first()
+    if p1: p1.display_name = partner1_name.strip() or DEFAULT_SETTINGS["partner1_name"]
+    if p2: p2.display_name = partner2_name.strip() or DEFAULT_SETTINGS["partner2_name"]
     db.commit()
+    # Refresh session display name if current user's name changed
+    current_user = db.query(User).filter(User.id == request.session["user_id"]).first()
+    if current_user:
+        request.session["display_name"] = current_user.display_name
     return RedirectResponse("/settings?saved=1", status_code=302)
 
 
