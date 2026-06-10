@@ -341,13 +341,13 @@ async def passkey_register_options(request: Request, db: Session = Depends(get_d
 async def passkey_register(request: Request, db: Session = Depends(get_db)):
     if not require_auth(request):
         raise HTTPException(401)
-    raw_body = await request.body()
-    body = json.loads(raw_body)
+    body = json.loads(await request.body())
+    device_name = body.pop("device_name", None)  # not part of the WebAuthn credential
     challenge_b64 = request.session.pop("reg_challenge", None)
     if not challenge_b64:
         raise HTTPException(400, "No registration challenge in session")
     try:
-        reg_cred = parse_registration_credential_json(raw_body)
+        reg_cred = parse_registration_credential_json(json.dumps(body))
         verification = verify_registration_response(
             credential=reg_cred,
             expected_challenge=_b64url_decode(challenge_b64),
@@ -365,7 +365,7 @@ async def passkey_register(request: Request, db: Session = Depends(get_db)):
         credential_id=cred_id,
         public_key=pub_key,
         sign_count=verification.sign_count,
-        device_name=body.get("device_name") or "iPhone / Face ID",
+        device_name=device_name or "iPhone / Face ID",
     ))
     db.commit()
     return JSONResponse({"ok": True})
@@ -396,7 +396,7 @@ async def passkey_auth(request: Request, db: Session = Depends(get_db)):
     if not stored:
         raise HTTPException(400, "Unknown credential — register this device first")
     try:
-        auth_cred = parse_authentication_credential_json(raw_body)
+        auth_cred = parse_authentication_credential_json(json.dumps(body))
         verification = verify_authentication_response(
             credential=auth_cred,
             expected_challenge=_b64url_decode(challenge_b64),
