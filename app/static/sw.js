@@ -1,7 +1,7 @@
 // Date-abase Service Worker
 // Caches static assets for offline/fast load; all API/page requests go to network.
 
-const CACHE = 'dateabase-v1';
+const CACHE = 'dateabase-v2';
 const STATIC_ASSETS = [
   '/static/css/style.css',
   '/static/manifest.json',
@@ -32,14 +32,19 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Cache-first for static assets
+  // Stale-while-revalidate for static assets:
+  // serve cached copy instantly, but always refetch in the background so
+  // updated CSS/JS gets picked up on the next load.
   if (url.pathname.startsWith('/static/')) {
     event.respondWith(
-      caches.match(event.request).then(cached => cached || fetch(event.request).then(resp => {
-        const clone = resp.clone();
-        caches.open(CACHE).then(cache => cache.put(event.request, clone));
-        return resp;
-      }))
+      caches.match(event.request).then(cached => {
+        const network = fetch(event.request).then(resp => {
+          const clone = resp.clone();
+          caches.open(CACHE).then(cache => cache.put(event.request, clone));
+          return resp;
+        }).catch(() => cached);
+        return cached || network;
+      })
     );
     return;
   }

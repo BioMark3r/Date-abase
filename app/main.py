@@ -122,14 +122,6 @@ def _b64url_decode(s: str) -> bytes:
     pad = 4 - len(s) % 4
     return base64.urlsafe_b64decode(s + ('=' * (pad % 4)))
 
-def _parse_webauthn_credential(model_class, data: dict):
-    """Pydantic v1/v2 compatible model parse."""
-    try:
-        return model_class.model_validate(data)   # pydantic v2
-    except AttributeError:
-        return model_class.parse_obj(data)        # pydantic v1
-
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def require_auth(request: Request) -> bool:
@@ -345,15 +337,14 @@ async def passkey_register_options(request: Request, db: Session = Depends(get_d
 async def passkey_register(request: Request, db: Session = Depends(get_db)):
     if not require_auth(request):
         raise HTTPException(401)
-    body = await request.json()
+    raw_body = await request.body()
+    body = json.loads(raw_body)
     challenge_b64 = request.session.pop("reg_challenge", None)
     if not challenge_b64:
         raise HTTPException(400, "No registration challenge in session")
     try:
-        from webauthn.helpers.structs import RegistrationCredential
-        reg_cred = _parse_webauthn_credential(RegistrationCredential, body)
         verification = verify_registration_response(
-            credential=reg_cred,
+            credential=raw_body,
             expected_challenge=_b64url_decode(challenge_b64),
             expected_rp_id=APP_DOMAIN,
             expected_origin=APP_ORIGIN,
@@ -388,7 +379,8 @@ async def passkey_auth_options(request: Request):
 
 @app.post("/auth/passkey/auth")
 async def passkey_auth(request: Request, db: Session = Depends(get_db)):
-    body = await request.json()
+    raw_body = await request.body()
+    body = json.loads(raw_body)
     challenge_b64 = request.session.pop("auth_challenge", None)
     if not challenge_b64:
         raise HTTPException(400, "No auth challenge in session")
@@ -399,10 +391,8 @@ async def passkey_auth(request: Request, db: Session = Depends(get_db)):
     if not stored:
         raise HTTPException(400, "Unknown credential — register this device first")
     try:
-        from webauthn.helpers.structs import AuthenticationCredential
-        auth_cred = _parse_webauthn_credential(AuthenticationCredential, body)
         verification = verify_authentication_response(
-            credential=auth_cred,
+            credential=raw_body,
             expected_challenge=_b64url_decode(challenge_b64),
             expected_rp_id=APP_DOMAIN,
             expected_origin=APP_ORIGIN,
