@@ -68,9 +68,11 @@
     <h2 class="detail-section-title">📸 Photos</h2>
     <div class="photo-gallery">
       {% for img in entry.images %}
-      <a href="/uploads/{{ img.filename }}" target="_blank" rel="noopener" class="photo-gallery-item">
-        <img src="/uploads/{{ img.filename }}" alt="Date photo {{ loop.index }}" loading="lazy"/>
-      </a>
+      <button type="button" class="photo-gallery-item gallery-photo"
+              onclick="openLightbox({{ loop.index0 }})"
+              aria-label="View date photo {{ loop.index }} full size">
+        <img src="/uploads/{{ img.filename }}" alt="{{ img.caption or 'Date photo ' ~ loop.index }}" loading="lazy"/>
+      </button>
       {% endfor %}
     </div>
   </section>
@@ -159,9 +161,68 @@
   </div>
 
 </div>
+
+<!-- Photo lightbox -->
+{% if entry.images %}
+<div class="lightbox-overlay" id="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer">
+  <button class="lightbox-btn lightbox-close" onclick="closeLightbox()" aria-label="Close">✕</button>
+  <button class="lightbox-btn lightbox-prev" onclick="lightboxStep(-1)" aria-label="Previous photo">‹</button>
+  <img class="lightbox-img" id="lightbox-img" src="" alt="" />
+  <button class="lightbox-btn lightbox-next" onclick="lightboxStep(1)" aria-label="Next photo">›</button>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
+{% if entry.images %}
+<script>
+  const lightboxPhotos = [
+    {% for img in entry.images %}{{ ("/uploads/" ~ img.filename) | tojson }},{% endfor %}
+  ];
+  let lightboxIdx = 0;
+  const lbOverlay = document.getElementById('lightbox');
+  const lbImg = document.getElementById('lightbox-img');
+  function openLightbox(i) {
+    lightboxIdx = i;
+    lbImg.src = lightboxPhotos[i];
+    lbOverlay.classList.add('open');
+  }
+  function closeLightbox() { lbOverlay.classList.remove('open'); }
+  function lightboxStep(d) {
+    lightboxIdx = (lightboxIdx + d + lightboxPhotos.length) % lightboxPhotos.length;
+    lbImg.src = lightboxPhotos[lightboxIdx];
+  }
+  lbOverlay.addEventListener('click', e => { if (e.target === lbOverlay) closeLightbox(); });
+  document.addEventListener('keydown', e => {
+    if (!lbOverlay.classList.contains('open')) return;
+    if (e.key === 'Escape') closeLightbox();
+    else if (e.key === 'ArrowLeft') lightboxStep(-1);
+    else if (e.key === 'ArrowRight') lightboxStep(1);
+  });
+</script>
+{% endif %}
+
+{% if (entry.rating or 0) == 5 %}
+<script>
+  // Confetti burst for a perfect 5-heart date 💕 (respects reduced-motion)
+  (function () {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (sessionStorage.getItem('confetti-{{ entry.id }}')) return;  // once per session per date
+    sessionStorage.setItem('confetti-{{ entry.id }}', '1');
+    const emojis = ['💕', '❤️', '💖', '💗', '✨', '🎉'];
+    for (let i = 0; i < 28; i++) {
+      const el = document.createElement('span');
+      el.className = 'confetti-piece';
+      el.textContent = emojis[i % emojis.length];
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.animationDuration = (2 + Math.random() * 2) + 's';
+      el.style.animationDelay = (Math.random() * 0.6) + 's';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 5000);
+    }
+  })();
+</script>
+{% endif %}
 {% set has_new_locs = entry.locations and entry.locations | length > 0 %}
 {% set has_legacy   = entry.location_lat and not has_new_locs %}
 {% if has_new_locs or has_legacy %}

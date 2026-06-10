@@ -55,12 +55,12 @@
       <!-- Rating row -->
       <div class="form-group">
         <label>Rating</label>
-        <div class="heart-rating-js" id="heart-rating-widget">
-          <span class="hr-star" data-val="1" title="1 heart">❤️</span>
-          <span class="hr-star" data-val="2" title="2 hearts">❤️</span>
-          <span class="hr-star" data-val="3" title="3 hearts">❤️</span>
-          <span class="hr-star" data-val="4" title="4 hearts">❤️</span>
-          <span class="hr-star" data-val="5" title="5 hearts">❤️</span>
+        <div class="heart-rating-js" id="heart-rating-widget" role="radiogroup" aria-label="Date rating in hearts">
+          <span class="hr-star" data-val="1" role="radio" tabindex="0" aria-label="1 heart"   title="1 heart">❤️</span>
+          <span class="hr-star" data-val="2" role="radio" tabindex="0" aria-label="2 hearts"  title="2 hearts">❤️</span>
+          <span class="hr-star" data-val="3" role="radio" tabindex="0" aria-label="3 hearts"  title="3 hearts">❤️</span>
+          <span class="hr-star" data-val="4" role="radio" tabindex="0" aria-label="4 hearts"  title="4 hearts">❤️</span>
+          <span class="hr-star" data-val="5" role="radio" tabindex="0" aria-label="5 hearts"  title="5 hearts">❤️</span>
         </div>
         <input type="hidden" name="rating" id="rating-hidden"
           value="{{ entry.rating if entry and entry.rating else 5 }}" />
@@ -396,7 +396,10 @@
   let currentRating  = parseInt(ratingHidden.value) || 5;
 
   function applyRating(val) {
-    ratingStars.forEach((s, i) => s.classList.toggle('hr-active', i < val));
+    ratingStars.forEach((s, i) => {
+      s.classList.toggle('hr-active', i < val);
+      s.setAttribute('aria-checked', (i + 1) === val ? 'true' : 'false');
+    });
   }
   function previewRating(val) {
     ratingStars.forEach((s, i) => s.classList.toggle('hr-preview', i < val));
@@ -410,6 +413,19 @@
     star.addEventListener('mouseenter', () => { previewRating(i + 1); });
     star.addEventListener('mouseleave', () => { ratingStars.forEach(s => s.classList.remove('hr-preview')); ratingHint.textContent = ratingLabels[currentRating]; });
     star.addEventListener('click',      () => { currentRating = i + 1; ratingHidden.value = currentRating; applyRating(currentRating); ratingHint.textContent = ratingLabels[currentRating]; });
+    star.addEventListener('keydown', (e) => {
+      let val = currentRating;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') val = Math.min(5, currentRating + 1);
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') val = Math.max(1, currentRating - 1);
+      else if (e.key === ' ' || e.key === 'Enter') val = i + 1;
+      else return;
+      e.preventDefault();
+      currentRating = val;
+      ratingHidden.value = val;
+      applyRating(val);
+      ratingHint.textContent = ratingLabels[val];
+      ratingStars[val - 1].focus();
+    });
   });
 
   // ── Image preview & delete helpers ──────────────────────────────────────────

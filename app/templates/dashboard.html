@@ -16,7 +16,30 @@
 {% endif %}
 {% if request.query_params.get('import_error') %}
 <div class="alert-error">
-  ❌ Import failed. That JSON file might need a hug. Try again?
+  ❌ Import failed: {{ request.query_params.get('import_error') }}
+</div>
+{% endif %}
+
+<!-- Anniversary + streak banner -->
+{% if anniversary or (streak and streak.weeks > 1) %}
+<div class="celebrate-bar">
+  {% if anniversary %}
+    {% if anniversary.is_today %}
+    <div class="celebrate-chip celebrate-anniversary celebrate-today">
+      🎉 Happy {{ anniversary.next_milestone_years }}-year anniversary today! 💕
+    </div>
+    {% else %}
+    <div class="celebrate-chip celebrate-anniversary">
+      💞 <strong>{{ anniversary.days_together }}</strong> days together
+      <span class="celebrate-sub">· {{ anniversary.days_until_next }} days to year {{ anniversary.next_milestone_years }}</span>
+    </div>
+    {% endif %}
+  {% endif %}
+  {% if streak and streak.weeks > 1 %}
+  <div class="celebrate-chip celebrate-streak">
+    🔥 <strong>{{ streak.weeks }}-week</strong> date streak{% if not streak.active %} <span class="celebrate-sub">· log one this week to keep it!</span>{% endif %}
+  </div>
+  {% endif %}
 </div>
 {% endif %}
 

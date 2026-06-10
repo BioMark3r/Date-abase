@@ -37,7 +37,7 @@ from webauthn.helpers.structs import (
 )
 
 from .database import engine, get_db, Base, SessionLocal
-from .models import DateEntry, DateImage, DateLocation, CommEntry, AppSettings, AuditLog, User, WebAuthnCredential
+from .models import DateEntry, DateImage, DateLocation, CommEntry, AppSettings, AuditLog, User, WebAuthnCredential, BucketListItem
 
 Base.metadata.create_all(bind=engine)
 
@@ -63,6 +63,15 @@ MAX_IMAGE_BYTES    = 15 * 1024 * 1024  # 15 MB
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 _is_prod = APP_DOMAIN != "localhost"
+
+# Refuse to boot in production with the shipped default SECRET_KEY — a known
+# key would let anyone forge session cookies.
+if _is_prod and SECRET_KEY == "super-secret-love-key-change-me":
+    raise RuntimeError(
+        "SECRET_KEY is still the default value. Set a unique SECRET_KEY env var "
+        "before running in production (APP_DOMAIN != localhost)."
+    )
+
 app.add_middleware(
     SessionMiddleware,
     secret_key=SECRET_KEY,
@@ -128,6 +137,34 @@ def _b64url_decode(s: str) -> bytes:
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+# ── Simple in-memory brute-force throttle for auth endpoints ──────────────────
+# Keyed by client IP. Not distributed, but fine for a 2-person single-instance app.
+_LOGIN_ATTEMPTS: dict[str, list[float]] = {}
+_RATE_WINDOW_SEC = 300      # 5 minutes
+_RATE_MAX_TRIES  = 10       # max failed attempts per window
+
+def _client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+def rate_limited(request: Request) -> bool:
+    """Return True if this IP has exceeded the failed-attempt budget."""
+    now = datetime.now().timestamp()
+    ip = _client_ip(request)
+    tries = [t for t in _LOGIN_ATTEMPTS.get(ip, []) if now - t < _RATE_WINDOW_SEC]
+    _LOGIN_ATTEMPTS[ip] = tries
+    return len(tries) >= _RATE_MAX_TRIES
+
+def record_failed_attempt(request: Request) -> None:
+    ip = _client_ip(request)
+    _LOGIN_ATTEMPTS.setdefault(ip, []).append(datetime.now().timestamp())
+
+def clear_attempts(request: Request) -> None:
+    _LOGIN_ATTEMPTS.pop(_client_ip(request), None)
+
+
 def require_auth(request: Request) -> bool:
     return bool(request.session.get("user_id"))
 
@@ -170,6 +207,7 @@ async def startup_event():
 DEFAULT_SETTINGS = {
     "partner1_name": "Partner 1",
     "partner2_name": "Partner 2",
+    "anniversary_date": "",   # ISO date (YYYY-MM-DD) the relationship became official
 }
 
 def get_settings(db: Session) -> dict:
@@ -292,11 +330,14 @@ async def login(
         "partner1_name": settings["partner1_name"],
         "partner2_name": settings["partner2_name"],
     }
+    if rate_limited(request):
+        return templates.TemplateResponse("splash.html", {
+            **ctx, "error": "Too many attempts. Take a breath and try again in a few minutes. ⏳"})
     user = db.query(User).filter(User.username == username).first()
-    if not user or not user.hashed_password:
+    if not user or not user.hashed_password or not pwd_context.verify(password, user.hashed_password):
+        record_failed_attempt(request)
         return templates.TemplateResponse("splash.html", {**ctx, "error": "Invalid credentials. 💔"})
-    if not pwd_context.verify(password, user.hashed_password):
-        return templates.TemplateResponse("splash.html", {**ctx, "error": "Wrong password. Try again. 💔"})
+    clear_attempts(request)
     request.session["user_id"]      = user.id
     request.session["username"]     = user.username
     request.session["display_name"] = user.display_name
@@ -384,6 +425,8 @@ async def passkey_auth_options(request: Request):
 
 @app.post("/auth/passkey/auth")
 async def passkey_auth(request: Request, db: Session = Depends(get_db)):
+    if rate_limited(request):
+        raise HTTPException(429, "Too many attempts. Try again in a few minutes.")
     raw_body = await request.body()
     body = json.loads(raw_body)
     challenge_b64 = request.session.pop("auth_challenge", None)
@@ -407,7 +450,9 @@ async def passkey_auth(request: Request, db: Session = Depends(get_db)):
             require_user_verification=True,
         )
     except Exception as exc:
+        record_failed_attempt(request)
         raise HTTPException(400, f"Authentication failed: {exc}")
+    clear_attempts(request)
     stored.sign_count = verification.new_sign_count
     db.commit()
     user = stored.user
@@ -517,6 +562,63 @@ def compute_romance_meter(dates, comms) -> dict:
     }
 
 
+def compute_streak(dates) -> dict:
+    """Consecutive-week date streak: how many back-to-back ISO weeks (ending this
+    week or last week) have at least one date logged."""
+    if not dates:
+        return {"weeks": 0, "active": False}
+    weeks = {d.date_datetime.isocalendar()[:2] for d in dates}
+    now = datetime.now()
+    streak = 0
+    cursor = now
+    # Allow the streak to still count if there's a date this week OR last week.
+    if cursor.isocalendar()[:2] not in weeks:
+        cursor = cursor - timedelta(weeks=1)
+        if cursor.isocalendar()[:2] not in weeks:
+            return {"weeks": 0, "active": False}
+    while cursor.isocalendar()[:2] in weeks:
+        streak += 1
+        cursor = cursor - timedelta(weeks=1)
+    active = now.isocalendar()[:2] in weeks
+    return {"weeks": streak, "active": active}
+
+
+def compute_anniversary(anniversary_str: str) -> dict | None:
+    """Given an ISO date string, return days-together + countdown to the next
+    yearly anniversary."""
+    if not anniversary_str:
+        return None
+    try:
+        start = datetime.fromisoformat(anniversary_str)
+    except ValueError:
+        return None
+    now = datetime.now()
+    days_together = (now.date() - start.date()).days
+    if days_together < 0:
+        return None
+    # Next anniversary (same month/day, this year or next)
+    year = now.year
+    try:
+        nxt = start.replace(year=year)
+    except ValueError:        # Feb 29 → use Mar 1
+        nxt = start.replace(year=year, month=3, day=1)
+    if nxt.date() < now.date():
+        try:
+            nxt = start.replace(year=year + 1)
+        except ValueError:
+            nxt = start.replace(year=year + 1, month=3, day=1)
+    days_until = (nxt.date() - now.date()).days
+    years_at_next = nxt.year - start.year
+    return {
+        "start": start,
+        "days_together": days_together,
+        "years": days_together // 365,
+        "days_until_next": days_until,
+        "next_milestone_years": years_at_next,
+        "is_today": days_until == 0,
+    }
+
+
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
 @app.get("/dashboard", response_class=HTMLResponse)
@@ -549,6 +651,10 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     comms = db.query(CommEntry).all()
     romance = compute_romance_meter(dates, comms)
 
+    settings = get_settings(db)
+    streak = compute_streak(dates)
+    anniversary = compute_anniversary(settings.get("anniversary_date", ""))
+
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "dates": dates,
@@ -559,6 +665,8 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
             "avg_rating":       avg_rating,
         },
         "romance": romance,
+        "streak": streak,
+        "anniversary": anniversary,
     })
 
 
@@ -584,8 +692,6 @@ async def create_date(
     duration_hours:      str          = Form(""),
     duration_mins:       str          = Form(""),
     location_name:       str          = Form(""),
-    location_lat:        str          = Form(""),
-    location_lon:        str          = Form(""),
     what_we_did:         str          = Form(""),
     notes:               str          = Form(""),
     rating:              int          = Form(5),
@@ -948,6 +1054,63 @@ async def delete_comm(
     return RedirectResponse("/comms", status_code=302)
 
 
+# ── Bucket List ───────────────────────────────────────────────────────────────
+
+@app.get("/bucket-list", response_class=HTMLResponse)
+async def bucket_list(request: Request, db: Session = Depends(get_db)):
+    if not require_auth(request):
+        return RedirectResponse("/", status_code=302)
+    items = (
+        db.query(BucketListItem)
+        .order_by(BucketListItem.done, BucketListItem.created_at.desc())
+        .all()
+    )
+    todo = [i for i in items if not i.done]
+    done = [i for i in items if i.done]
+    return templates.TemplateResponse("bucket_list.html", {
+        "request": request, "todo": todo, "done": done,
+    })
+
+
+@app.post("/bucket-list/new")
+async def bucket_add(
+    request: Request,
+    title: str = Form(...),
+    notes: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    if not require_auth(request):
+        return RedirectResponse("/", status_code=302)
+    title = title.strip()
+    if title:
+        db.add(BucketListItem(title=title, notes=notes.strip() or None))
+        db.commit()
+    return RedirectResponse("/bucket-list", status_code=302)
+
+
+@app.post("/bucket-list/{item_id}/toggle")
+async def bucket_toggle(request: Request, item_id: int, db: Session = Depends(get_db)):
+    if not require_auth(request):
+        return RedirectResponse("/", status_code=302)
+    item = db.query(BucketListItem).filter(BucketListItem.id == item_id).first()
+    if item:
+        item.done = 0 if item.done else 1
+        item.completed_at = datetime.now() if item.done else None
+        db.commit()
+    return RedirectResponse("/bucket-list", status_code=302)
+
+
+@app.post("/bucket-list/{item_id}/delete")
+async def bucket_delete(request: Request, item_id: int, db: Session = Depends(get_db)):
+    if not require_auth(request):
+        return RedirectResponse("/", status_code=302)
+    item = db.query(BucketListItem).filter(BucketListItem.id == item_id).first()
+    if item:
+        db.delete(item)
+        db.commit()
+    return RedirectResponse("/bucket-list", status_code=302)
+
+
 # ── Settings ─────────────────────────────────────────────────────────────────
 
 @app.get("/settings", response_class=HTMLResponse)
@@ -970,16 +1133,24 @@ async def save_settings(
     request: Request,
     partner1_name: str = Form(""),
     partner2_name: str = Form(""),
+    anniversary_date: str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not require_auth(request):
         return RedirectResponse("/", status_code=302)
-    for key, val in [("partner1_name", partner1_name.strip()), ("partner2_name", partner2_name.strip())]:
+    for key, val in [
+        ("partner1_name", partner1_name.strip()),
+        ("partner2_name", partner2_name.strip()),
+        ("anniversary_date", anniversary_date.strip()),
+    ]:
+        # anniversary_date may legitimately be blank; names fall back to defaults
+        fallback = DEFAULT_SETTINGS[key]
+        new_val = val if (val or key == "anniversary_date") else fallback
         row = db.query(AppSettings).filter(AppSettings.key == key).first()
         if row:
-            row.value = val or DEFAULT_SETTINGS[key]
+            row.value = new_val
         else:
-            db.add(AppSettings(key=key, value=val or DEFAULT_SETTINGS[key]))
+            db.add(AppSettings(key=key, value=new_val))
     # Keep User.display_name in sync with settings
     p1 = db.query(User).filter(User.username == "partner1").first()
     p2 = db.query(User).filter(User.username == "partner2").first()
@@ -1416,4 +1587,6 @@ async def import_data(
         )
     except Exception as exc:
         db.rollback()
-        return RedirectResponse("/dashboard?import_error=1", status_code=302)
+        from urllib.parse import quote
+        return RedirectResponse(
+            f"/dashboard?import_error={quote(str(exc)[:160])}", status_code=302)

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Bucket List 🪣 — Date-abase{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>🪣 Date Bucket List</h1>
+  <p class="page-subtitle">Dream it, do it, check it off — together 💕</p>
+</div>
+
+<form method="post" action="/bucket-list/new" class="bucket-add-form">
+  <input type="text" name="title" class="form-input" placeholder="e.g. See the northern lights ✨"
+         maxlength="200" required aria-label="Bucket list idea" />
+  <input type="text" name="notes" class="form-input" placeholder="Notes (optional)"
+         maxlength="300" aria-label="Notes" />
+  <button type="submit" class="btn btn-primary">➕ Add</button>
+</form>
+
+{% if not todo and not done %}
+<div class="empty-state">
+  <div class="empty-graphic">🪣</div>
+  <h2>Your bucket list is empty!</h2>
+  <p>Add date ideas you both want to make happen.</p>
+</div>
+{% endif %}
+
+{% if todo %}
+<h3 class="bucket-section-title">💭 To Do ({{ todo|length }})</h3>
+<ul class="bucket-list">
+  {% for item in todo %}
+  <li class="bucket-item">
+    <form method="post" action="/bucket-list/{{ item.id }}/toggle" style="display:inline;">
+      <button type="submit" class="bucket-check" title="Mark done" aria-label="Mark '{{ item.title }}' done">⬜</button>
+    </form>
+    <div class="bucket-body">
+      <div class="bucket-title">{{ item.title }}</div>
+      {% if item.notes %}<div class="bucket-notes">{{ item.notes }}</div>{% endif %}
+    </div>
+    <form method="post" action="/bucket-list/{{ item.id }}/delete" style="display:inline;"
+          onsubmit="return confirm('Delete this idea?');">
+      <button type="submit" class="btn btn-sm btn-ghost" aria-label="Delete">🗑️</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% if done %}
+<h3 class="bucket-section-title">✅ Done ({{ done|length }})</h3>
+<ul class="bucket-list">
+  {% for item in done %}
+  <li class="bucket-item is-done">
+    <form method="post" action="/bucket-list/{{ item.id }}/toggle" style="display:inline;">
+      <button type="submit" class="bucket-check" title="Mark not done" aria-label="Mark '{{ item.title }}' not done">✅</button>
+    </form>
+    <div class="bucket-body">
+      <div class="bucket-title">{{ item.title }}</div>
+      {% if item.notes %}<div class="bucket-notes">{{ item.notes }}</div>{% endif %}
+      {% if item.completed_at %}<div class="bucket-notes">Completed {{ item.completed_at.strftime('%b %d, %Y') }}</div>{% endif %}
+    </div>
+    <form method="post" action="/bucket-list/{{ item.id }}/delete" style="display:inline;"
+          onsubmit="return confirm('Delete this idea?');">
+      <button type="submit" class="btn btn-sm btn-ghost" aria-label="Delete">🗑️</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

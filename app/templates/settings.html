@@ -44,6 +44,17 @@
           </div>
         </div>
       </div>
+      <div class="form-section">
+        <h3 class="form-section-title">📅 Anniversary</h3>
+        <p style="color:var(--gray-600); font-size:0.9rem; margin-bottom:1.25rem;">
+          The day you became official — powers the countdown &amp; days-together counter on your dashboard.
+        </p>
+        <div class="form-group">
+          <label for="anniversary_date">Anniversary date</label>
+          <input type="date" id="anniversary_date" name="anniversary_date" class="form-input"
+            value="{{ settings.anniversary_date }}" />
+        </div>
+      </div>
       <div class="form-actions">
         <button type="submit" class="btn btn-primary">💾 Save Settings</button>
         <a href="/dashboard" class="btn btn-ghost">Cancel</a>

@@ -21,6 +21,50 @@
   --transition:  0.2s ease;
 }
 
+/* ── Dark mode ─────────────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --pink:        #FF7FB0;
+  --pink-light:  #7d3b53;
+  --pink-pale:   #2b1d28;
+  --rose:        #FF8FB3;   /* lightened for readable links/headings on dark */
+  --rose-dark:   #FFB3C9;
+  --rose-mid:    #FF6B9D;
+  --cream:       #160f1c;   /* page background */
+  --white:       #221829;   /* card / surface background */
+  --gray-100:    #2c2034;
+  --gray-200:    #3a2c44;
+  --gray-400:    #8d7f97;
+  --gray-600:    #c2b4cc;
+  --gray-800:    #f2e9f1;   /* primary text */
+  --shadow-sm:   0 2px 8px rgba(0,0,0,0.35);
+  --shadow-md:   0 4px 20px rgba(0,0,0,0.45);
+  --shadow-lg:   0 8px 40px rgba(0,0,0,0.55);
+}
+html { transition: background-color var(--transition); }
+
+/* ── Theme toggle button ───────────────────────────────────────────────────── */
+.theme-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.15rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  line-height: 1;
+  transition: background var(--transition);
+}
+.theme-toggle:hover { background: var(--pink-pale); }
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ── Reset & Base ──────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1291,6 +1335,7 @@ a:hover { color: var(--pink); }
   border-color: #f5c6c6;
   background: #fff0f0;
   opacity: 0.55;
+  transition: opacity 0.15s ease, background 0.15s ease;
 }
 .image-thumb {
   width: 100%;
@@ -2140,4 +2185,135 @@ a:hover { color: var(--pink); }
   font-size: 0.85rem;
   color: var(--gray-800);
   line-height: 1.5;
+}
+
+/* ── Celebrate bar (anniversary + streak) ───────────────────────────────────── */
+.celebrate-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.celebrate-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.1rem;
+  border-radius: 30px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: 1.5px solid var(--pink-light);
+  background: var(--white);
+  color: var(--gray-800);
+  box-shadow: var(--shadow-sm);
+}
+.celebrate-chip strong { color: var(--rose); }
+.celebrate-anniversary { background: linear-gradient(135deg, var(--pink-pale), var(--white)); }
+.celebrate-streak { background: linear-gradient(135deg, #fff4e6, var(--white)); border-color: #ffd9a0; }
+.celebrate-sub { color: var(--gray-400); font-weight: 500; font-size: 0.82rem; }
+.celebrate-today {
+  background: linear-gradient(135deg, var(--rose-mid), var(--pink));
+  color: #fff;
+  border-color: transparent;
+  animation: celebrate-pulse 1.4s ease-in-out infinite;
+}
+@keyframes celebrate-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.03); }
+}
+
+/* ── Bucket list ────────────────────────────────────────────────────────────── */
+.bucket-add-form {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.75rem;
+}
+.bucket-add-form .form-input { flex: 1; min-width: 200px; }
+.bucket-section-title {
+  font-family: 'Playfair Display', serif;
+  color: var(--rose);
+  margin: 1.5rem 0 0.75rem;
+}
+.bucket-list { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
+.bucket-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: var(--white);
+  border: 1.5px solid var(--pink-light);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+.bucket-item.is-done { opacity: 0.65; }
+.bucket-item.is-done .bucket-title { text-decoration: line-through; color: var(--gray-400); }
+.bucket-check {
+  font-size: 1.4rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+.bucket-body { flex: 1; min-width: 0; }
+.bucket-title { font-weight: 700; color: var(--gray-800); }
+.bucket-notes { font-size: 0.85rem; color: var(--gray-600); }
+.bucket-empty { color: var(--gray-400); font-style: italic; }
+
+/* ── Photo lightbox ─────────────────────────────────────────────────────────── */
+.lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.lightbox-overlay.open { display: flex; }
+.lightbox-img {
+  max-width: 92vw;
+  max-height: 86vh;
+  border-radius: 8px;
+  box-shadow: 0 10px 60px rgba(0,0,0,0.6);
+}
+.lightbox-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border: none;
+  font-size: 2rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  cursor: pointer;
+  user-select: none;
+}
+.lightbox-btn:hover { background: rgba(255,255,255,0.3); }
+.lightbox-prev { left: 3vw; }
+.lightbox-next { right: 3vw; }
+.lightbox-close { top: 4vh; right: 4vw; transform: none; font-size: 1.5rem; width: 48px; height: 48px; }
+.gallery-photo { cursor: zoom-in; }
+
+/* ── Confetti ───────────────────────────────────────────────────────────────── */
+.confetti-piece {
+  position: fixed;
+  top: -20px;
+  font-size: 1.4rem;
+  pointer-events: none;
+  z-index: 999;
+  animation: confetti-fall linear forwards;
+}
+@keyframes confetti-fall {
+  to { transform: translateY(105vh) rotate(540deg); opacity: 0; }
+}
+
+/* ── Mobile map sizing ──────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .map-container { height: 220px; }
+  .map-readonly  { height: 240px; }
+  .bucket-add-form .btn { width: 100%; }
 }

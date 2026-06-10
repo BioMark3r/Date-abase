@@ -127,6 +127,32 @@ class AppSettings(Base):
     value = Column(Text, nullable=True)
 
 
+class BucketListItem(Base):
+    """A shared date-idea wish list item the couple can check off."""
+    __tablename__ = "bucket_list"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    title       = Column(String(300), nullable=False)
+    notes       = Column(Text, nullable=True)
+    done        = Column(Integer, default=0)            # 0 = todo, 1 = done
+    date_id     = Column(Integer, ForeignKey("dates.id"), nullable=True)  # link to the date that fulfilled it
+    created_at  = Column(DateTime, default=func.now())
+    completed_at = Column(DateTime, nullable=True)
+
+    date = relationship("DateEntry")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "notes": self.notes,
+            "done": bool(self.done),
+            "date_id": self.date_id,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+        }
+
+
 class User(Base):
     """One row per partner (partner1 / partner2).  Seeded from env vars on startup."""
     __tablename__ = "users"
