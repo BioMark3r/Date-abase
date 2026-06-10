@@ -21,7 +21,10 @@
 <body>
   <nav class="navbar">
     <a class="navbar-brand" href="/dashboard">💕 Date-abase</a>
-    <div class="navbar-links">
+    <button class="navbar-toggle" id="navbar-toggle" aria-label="Menu" aria-expanded="false" onclick="toggleNav()">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="navbar-links" id="navbar-links">
       <a href="/dashboard">📋 Our Dates</a>
       <a href="/dates/new">➕ New Date</a>
       <a href="/comms">📡 Log Comms</a>
@@ -50,6 +53,13 @@
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+    }
+    function toggleNav() {
+      var links = document.getElementById('navbar-links');
+      var btn = document.getElementById('navbar-toggle');
+      var open = links.classList.toggle('open');
+      btn.classList.toggle('open', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
     }
   </script>
 </body>
