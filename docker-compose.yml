@@ -16,9 +16,9 @@ services:
       - PARTNER2_NAME=Partner 2
       - PARTNER2_PASSWORD=lovebirds2
       # ── WebAuthn / Face ID ───────────────────────────────────────────────────
-      # For Cloudflare Tunnel, set these to your tunnel domain:
-      #   APP_DOMAIN=dates.yourdomain.com
-      #   APP_ORIGIN=https://dates.yourdomain.com
+      # Set these to your Tailscale hostname:
+      #   APP_DOMAIN=yourpi.tail1234a.ts.net
+      #   APP_ORIGIN=https://yourpi.tail1234a.ts.net
       - APP_DOMAIN=localhost
       - APP_ORIGIN=http://localhost:8000
       - DATABASE_URL=sqlite:////data/dateabase.db
