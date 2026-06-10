@@ -37,6 +37,10 @@
     {% if entry.location_name %}
     <span class="meta-chip">📍 {{ entry.location_name }}</span>
     {% endif %}
+    {% if entry.mood and entry.mood in MOODS_BY_KEY %}
+    {% set m = MOODS_BY_KEY[entry.mood] %}
+    <span class="meta-chip mood-meta-chip" style="--mood-color: {{ m.color }};">{{ m.emoji }} {{ m.label }}</span>
+    {% endif %}
   </div>
 </div>
 

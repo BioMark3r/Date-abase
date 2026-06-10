@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Date-alytics 📊 — Date-abase{% endblock %}
 
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
   <h1>📊 Date-alytics</h1>
@@ -320,6 +324,34 @@
 
 </div>
 
+{# ── Mood distribution ──────────────────────────────────────────────────── #}
+{% if stats.mood_dist %}
+<div class="anly-section">
+  <h3 class="anly-section-title">🔮 Mood Spectrum</h3>
+  <div class="mood-bars">
+    {% for m in stats.mood_dist %}
+    <div class="mood-bar-row">
+      <span class="mood-bar-label">{{ m.emoji }} {{ m.label }}</span>
+      <div class="mood-bar-track">
+        <div class="mood-bar-fill" style="width: {{ m.pct }}%; background: {{ m.color }};"></div>
+      </div>
+      <span class="mood-bar-count">{{ m.count }} <small>({{ m.pct }}%)</small></span>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="anly-section-note">Based on {{ stats.mood_total }} mood-tagged date{{ 's' if stats.mood_total != 1 }}.</p>
+</div>
+{% endif %}
+
+{# ── Location heatmap ───────────────────────────────────────────────────── #}
+{% if stats.heat_points %}
+<div class="anly-section">
+  <h3 class="anly-section-title">🗺️ Where Love Happens — Heatmap</h3>
+  <p class="anly-section-note">{{ stats.heat_points | length }} mapped location stop{{ 's' if stats.heat_points|length != 1 }} across your dates. Warmer = more visits.</p>
+  <div id="heatmap" class="map-container map-readonly"></div>
+</div>
+{% endif %}
+
 {# ── Geeky fun stats ────────────────────────────────────────────────────── #}
 <div class="anly-funfacts">
   <h3 class="anly-funfacts-title">🔬 Deep Analysis Results</h3>
@@ -407,5 +439,26 @@
   </div>
 </div>
 
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if not stats.empty and stats.heat_points %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script>
+  const heatPoints = {{ stats.heat_points | tojson }};
+  const heatMap = L.map('heatmap', { scrollWheelZoom: false });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(heatMap);
+  if (heatPoints.length) {
+    L.heatLayer(heatPoints, { radius: 30, blur: 22, maxZoom: 15 }).addTo(heatMap);
+    heatMap.fitBounds(heatPoints, { padding: [40, 40], maxZoom: 13 });
+    if (heatPoints.length === 1) heatMap.setView(heatPoints[0], 13);
+  } else {
+    heatMap.setView([40.7128, -74.0060], 3);
+  }
+</script>
 {% endif %}
 {% endblock %}

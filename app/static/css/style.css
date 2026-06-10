@@ -2311,9 +2311,109 @@ a:hover { color: var(--pink); }
   to { transform: translateY(105vh) rotate(540deg); opacity: 0; }
 }
 
+/* ── Mood picker (date form) ────────────────────────────────────────────────── */
+.mood-picker { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.mood-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 30px;
+  border: 2px solid var(--gray-200);
+  background: var(--white);
+  color: var(--gray-600);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.mood-chip:hover { border-color: var(--mood-color); color: var(--gray-800); }
+.mood-chip.mood-selected {
+  border-color: var(--mood-color);
+  background: var(--mood-color);
+  color: #fff;
+}
+.mood-chip .mood-emoji { font-size: 1.1rem; }
+
+/* Mood chip on detail meta + cards */
+.mood-meta-chip { border-color: var(--mood-color) !important; color: var(--mood-color) !important; }
+.date-mood { margin-left: 0.4rem; font-size: 1.05rem; }
+
+/* ── Mood ring (dashboard) ──────────────────────────────────────────────────── */
+.mood-ring-card {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  background: var(--white);
+  border: 1.5px solid var(--pink-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.mood-ring {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 14px rgba(0,0,0,0.25), var(--shadow-md);
+  animation: mood-ring-spin 24s linear infinite;
+}
+@keyframes mood-ring-spin { to { transform: rotate(360deg); } }
+.mood-ring-center {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  animation: mood-ring-spin 24s linear infinite reverse;  /* keep emoji upright-ish */
+}
+.mood-ring-emoji { font-size: 1.8rem; }
+.mood-ring-detail { flex: 1; min-width: 220px; }
+.mood-ring-title { font-family: 'Playfair Display', serif; color: var(--rose); margin-bottom: 0.25rem; }
+.mood-ring-sub { color: var(--gray-600); margin-bottom: 0.75rem; }
+.mood-ring-legend { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.mood-legend-chip {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  background: var(--pink-pale);
+  border: 1px solid var(--mood-color);
+  color: var(--gray-800);
+}
+
+/* ── Mood spectrum bars (analytics) ─────────────────────────────────────────── */
+.anly-section {
+  background: var(--white);
+  border: 1.5px solid var(--pink-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.anly-section-title { font-family: 'Playfair Display', serif; color: var(--rose); margin-bottom: 0.5rem; }
+.anly-section-note { color: var(--gray-400); font-size: 0.85rem; margin-top: 0.75rem; }
+.mood-bars { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.5rem; }
+.mood-bar-row { display: grid; grid-template-columns: 150px 1fr 80px; align-items: center; gap: 0.75rem; }
+.mood-bar-label { font-weight: 600; font-size: 0.9rem; color: var(--gray-800); }
+.mood-bar-track { background: var(--gray-100); border-radius: 20px; height: 16px; overflow: hidden; }
+.mood-bar-fill { height: 100%; border-radius: 20px; transition: width 0.6s cubic-bezier(.2,.8,.2,1); }
+.mood-bar-count { font-size: 0.85rem; color: var(--gray-600); text-align: right; }
+.mood-bar-count small { color: var(--gray-400); }
+
 /* ── Mobile map sizing ──────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .map-container { height: 220px; }
   .map-readonly  { height: 240px; }
   .bucket-add-form .btn { width: 100%; }
+  .mood-bar-row { grid-template-columns: 110px 1fr 60px; gap: 0.5rem; }
+  .mood-bar-label { font-size: 0.8rem; }
 }

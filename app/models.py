@@ -19,6 +19,7 @@ class DateEntry(Base):
     what_we_did = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
     rating = Column(Integer, default=5)
+    mood = Column(String(40), nullable=True)   # mood key, e.g. "lovey", "spicy" (see MOODS in main.py)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
@@ -69,6 +70,7 @@ class DateEntry(Base):
             "what_we_did": self.what_we_did,
             "notes": self.notes,
             "rating": self.rating,
+            "mood": self.mood,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

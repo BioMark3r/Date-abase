@@ -43,6 +43,27 @@
 </div>
 {% endif %}
 
+<!-- Mood Ring -->
+{% if mood_ring %}
+<div class="mood-ring-card">
+  <div class="mood-ring" style="background: {{ mood_ring.gradient }};" aria-hidden="true">
+    <div class="mood-ring-center">
+      <span class="mood-ring-emoji">{{ mood_ring.dominant.emoji }}</span>
+    </div>
+  </div>
+  <div class="mood-ring-detail">
+    <h2 class="mood-ring-title">🔮 Mood Ring</h2>
+    <p class="mood-ring-sub">Your vibe across the last {{ mood_ring.count }} date{{ 's' if mood_ring.count != 1 }} —
+      mostly <strong style="color: {{ mood_ring.dominant.color }};">{{ mood_ring.dominant.emoji }} {{ mood_ring.dominant.label }}</strong></p>
+    <div class="mood-ring-legend">
+      {% for m in mood_ring.breakdown %}
+      <span class="mood-legend-chip" style="--mood-color: {{ m.color }};">{{ m.emoji }} {{ m.label }} ×{{ m.count }}</span>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <!-- Romance Meter -->
 {% if romance %}
 {% set fill_h = (romance.score / 100 * 150) | round | int %}
@@ -192,6 +213,9 @@
     <div class="date-card-header">
       <div class="date-rating">
         {% for i in range(entry.rating or 5) %}❤️{% endfor %}
+        {% if entry.mood and entry.mood in MOODS_BY_KEY %}
+        <span class="date-mood" title="{{ MOODS_BY_KEY[entry.mood].label }}">{{ MOODS_BY_KEY[entry.mood].emoji }}</span>
+        {% endif %}
       </div>
       <div class="date-card-meta-right">
         <span class="hex-badge" title="Date #{{ loop.index }}">{{ loop.index | hex_idx }}</span>

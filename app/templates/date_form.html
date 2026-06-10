@@ -66,6 +66,22 @@
           value="{{ entry.rating if entry and entry.rating else 5 }}" />
         <span class="form-hint" id="rating-label">5 hearts — perfect!</span>
       </div>
+
+      <!-- Mood row -->
+      <div class="form-group">
+        <label>Mood <small style="color:var(--gray-400)">(optional)</small></label>
+        <input type="hidden" name="mood" id="mood-hidden" value="{{ entry.mood if entry and entry.mood else '' }}" />
+        <div class="mood-picker" role="radiogroup" aria-label="Date mood">
+          {% for key, emoji, label, color in moods %}
+          <button type="button" class="mood-chip" data-mood="{{ key }}"
+                  style="--mood-color: {{ color }};"
+                  role="radio" aria-checked="false" aria-label="{{ label }}" title="{{ label }}">
+            <span class="mood-emoji">{{ emoji }}</span>
+            <span class="mood-label">{{ label }}</span>
+          </button>
+          {% endfor %}
+        </div>
+      </div>
     </div>
 
     <!-- Pre-date -->
@@ -425,6 +441,26 @@
       applyRating(val);
       ratingHint.textContent = ratingLabels[val];
       ratingStars[val - 1].focus();
+    });
+  });
+
+  // ── Mood picker ──────────────────────────────────────────────────────────────
+  const moodHidden = document.getElementById('mood-hidden');
+  const moodChips  = document.querySelectorAll('.mood-chip');
+  function applyMood(key) {
+    moodChips.forEach(chip => {
+      const on = chip.dataset.mood === key;
+      chip.classList.toggle('mood-selected', on);
+      chip.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+  }
+  applyMood(moodHidden.value);
+  moodChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      // toggle off if clicking the already-selected mood
+      const key = (moodHidden.value === chip.dataset.mood) ? '' : chip.dataset.mood;
+      moodHidden.value = key;
+      applyMood(key);
     });
   });
 

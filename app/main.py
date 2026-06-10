@@ -101,6 +101,24 @@ COMM_TYPES = [
 ]
 COMM_TYPE_LABELS = {label: emoji for emoji, label in COMM_TYPES}
 
+# ── Mood definitions ──────────────────────────────────────────────────────────
+# key, emoji, label, color (drives the dashboard "mood ring" gradient)
+MOODS = [
+    ("lovey",   "🥰", "Lovey-dovey", "#FF6B9D"),
+    ("excited", "😍", "Excited",     "#FF4D6D"),
+    ("spicy",   "🌶️", "Spicy",       "#C9184A"),
+    ("fun",     "😂", "Fun & silly", "#FFC93C"),
+    ("content", "😌", "Content",     "#7AC74F"),
+    ("chill",   "😎", "Chill",       "#4FB0C6"),
+    ("emotional","🥹", "Emotional",  "#A06CD5"),
+    ("awkward", "😬", "Awkward",     "#9AA0A6"),
+]
+MOODS_BY_KEY = {key: {"emoji": e, "label": l, "color": c} for key, e, l, c in MOODS}
+
+# Make mood lookups available in every template (for mood chips on cards/detail)
+templates.env.globals["MOODS"] = MOODS
+templates.env.globals["MOODS_BY_KEY"] = MOODS_BY_KEY
+
 # ── Height oracle ideas ───────────────────────────────────────────────────────
 HEIGHT_IDEAS = [
     ("The Optimal Romance Angle™", "Lean in at exactly θ = tan⁻¹(14/hinge_magic) ≈ 23°. Science has spoken. The door hinge approves."),
@@ -197,8 +215,23 @@ def _seed_users() -> None:
         db.close()
 
 
+def _ensure_schema() -> None:
+    """Lightweight migrations for columns that create_all() won't add to an
+    existing SQLite table.  Idempotent — safe to run on every boot."""
+    from sqlalchemy import text, inspect
+    inspector = inspect(engine)
+    try:
+        cols = {c["name"] for c in inspector.get_columns("dates")}
+    except Exception:
+        return
+    if "mood" not in cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE dates ADD COLUMN mood VARCHAR(40)"))
+
+
 @app.on_event("startup")
 async def startup_event():
+    _ensure_schema()
     _seed_users()
 
 
@@ -227,6 +260,7 @@ AUDIT_FIELD_LABELS = {
     "what_we_did":         "What we did",
     "notes":               "Notes",
     "rating":              "Rating",
+    "mood":                "Mood",
     "comm_datetime":       "Date & time",
     "comm_type":           "Type",
     "description":         "Description",
@@ -583,6 +617,35 @@ def compute_streak(dates) -> dict:
     return {"weeks": streak, "active": active}
 
 
+def compute_mood_ring(dates) -> dict | None:
+    """Blend the moods of recent dates into a 'mood ring' — a conic-gradient
+    of mood colors plus the dominant mood. `dates` should be newest-first."""
+    recent = [d for d in dates if d.mood and d.mood in MOODS_BY_KEY][:10]
+    if not recent:
+        return None
+    n = len(recent)
+    # Build conic-gradient stops (oldest of the recent set first, sweeping around)
+    seg = round(100 / n, 2)
+    stops, pos = [], 0.0
+    for d in reversed(recent):   # oldest→newest so newest lands at the top-right
+        color = MOODS_BY_KEY[d.mood]["color"]
+        stops.append(f"{color} {pos:.2f}% {pos + seg:.2f}%")
+        pos += seg
+    gradient = "conic-gradient(from 0deg, " + ", ".join(stops) + ")"
+    counts = Counter(d.mood for d in recent)
+    dom_key, dom_count = counts.most_common(1)[0]
+    dom = MOODS_BY_KEY[dom_key]
+    return {
+        "gradient": gradient,
+        "count": n,
+        "dominant": {"key": dom_key, **dom, "count": dom_count},
+        "breakdown": [
+            {"key": k, **MOODS_BY_KEY[k], "count": c}
+            for k, c in counts.most_common()
+        ],
+    }
+
+
 def compute_anniversary(anniversary_str: str) -> dict | None:
     """Given an ISO date string, return days-together + countdown to the next
     yearly anniversary."""
@@ -654,6 +717,7 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     settings = get_settings(db)
     streak = compute_streak(dates)
     anniversary = compute_anniversary(settings.get("anniversary_date", ""))
+    mood_ring = compute_mood_ring(dates)   # dates already newest-first
 
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
@@ -667,6 +731,7 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
         "romance": romance,
         "streak": streak,
         "anniversary": anniversary,
+        "mood_ring": mood_ring,
     })
 
 
@@ -680,6 +745,7 @@ async def new_date_form(request: Request, db: Session = Depends(get_db)):
         "request": request, "entry": None, "error": None,
         "settings": get_settings(db),
         "existing_locs_json": "[]",
+        "moods": MOODS,
     })
 
 
@@ -695,6 +761,7 @@ async def create_date(
     what_we_did:         str          = Form(""),
     notes:               str          = Form(""),
     rating:              int          = Form(5),
+    mood:                str          = Form(""),
     locations_json:      str          = Form(""),
     images:              List[UploadFile] = File(default=[]),
     db: Session = Depends(get_db),
@@ -708,6 +775,8 @@ async def create_date(
             "request": request, "entry": None,
             "error": "Invalid date format. 📅",
             "settings": get_settings(db),
+            "existing_locs_json": locations_json or "[]",
+            "moods": MOODS,
         })
 
     h = int(duration_hours) if duration_hours.strip().isdigit() else 0
@@ -734,6 +803,7 @@ async def create_date(
         what_we_did=what_we_did or None,
         notes=notes or None,
         rating=rating,
+        mood=mood if mood in MOODS_BY_KEY else None,
     )
     db.add(entry)
     db.commit()
@@ -802,6 +872,7 @@ async def edit_date_form(request: Request, entry_id: int, db: Session = Depends(
         "request": request, "entry": entry, "error": None,
         "settings": get_settings(db),
         "existing_locs_json": json.dumps(existing_locs),
+        "moods": MOODS,
     })
 
 
@@ -820,6 +891,7 @@ async def update_date(
     what_we_did:         str          = Form(""),
     notes:               str          = Form(""),
     rating:              int          = Form(5),
+    mood:                str          = Form(""),
     locations_json:      str          = Form(""),
     delete_images:       str          = Form(""),
     images:              List[UploadFile] = File(default=[]),
@@ -840,6 +912,9 @@ async def update_date(
     except ValueError:
         return templates.TemplateResponse("date_form.html", {
             "request": request, "entry": entry, "error": "Invalid date format. 📅",
+            "settings": get_settings(db),
+            "existing_locs_json": locations_json or "[]",
+            "moods": MOODS,
         })
 
     # Delete marked images
@@ -872,6 +947,7 @@ async def update_date(
         "what_we_did":         entry.what_we_did,
         "notes":               entry.notes,
         "rating":              entry.rating,
+        "mood":                entry.mood,
     }
 
     entry.title               = title
@@ -884,6 +960,7 @@ async def update_date(
     entry.what_we_did         = what_we_did or None
     entry.notes               = notes or None
     entry.rating              = rating
+    entry.mood                = mood if mood in MOODS_BY_KEY else None
 
     # Update locations (full replace)
     save_locations(db, entry.id, locations_json)
@@ -905,6 +982,7 @@ async def update_date(
         "what_we_did":         entry.what_we_did,
         "notes":               entry.notes,
         "rating":              entry.rating,
+        "mood":                entry.mood,
     }
     diff = compute_diff(old_vals, new_vals)
     add_audit(db, changed_by=session_display_name(request), action="updated",
@@ -1302,6 +1380,21 @@ def compute_analytics(dates, comms, images_count: int, audit_logs) -> dict:
     fav_loc     = Counter(locs).most_common(1)[0] if locs else None   # (name, count)
     pct_located = round(len(locs) / len(dates) * 100) if dates else 0
 
+    # ── Map heat points (multi-stop locations + legacy single location) ───────
+    heat_points = []
+    for d in dates:
+        added = False
+        for loc in (d.locations or []):
+            if loc.lat is not None and loc.lon is not None:
+                heat_points.append([loc.lat, loc.lon])
+                added = True
+        if not added and d.location_lat is not None and d.location_lon is not None:
+            heat_points.append([d.location_lat, d.location_lon])
+
+    # ── Mood distribution ─────────────────────────────────────────────────────
+    mood_counts = Counter(d.mood for d in dates if d.mood)
+    mood_total  = sum(mood_counts.values())
+
     # ── Comms ─────────────────────────────────────────────────────────────────
     top_comm_type = Counter(c.comm_type for c in comms).most_common(1)[0] if comms else None
 
@@ -1373,6 +1466,13 @@ def compute_analytics(dates, comms, images_count: int, audit_logs) -> dict:
         "build":          build,
         "maintenance":    maintenance,
         "total_heart_h":  round(sum((d.rating or 0) * (d.duration_minutes or 0) for d in dates) / 60, 1),
+        "heat_points":    heat_points,
+        "mood_dist": [
+            {"key": k, **MOODS_BY_KEY[k], "count": c,
+             "pct": round(c / mood_total * 100)}
+            for k, c in mood_counts.most_common() if k in MOODS_BY_KEY
+        ],
+        "mood_total":     mood_total,
     }
 
 
@@ -1527,6 +1627,7 @@ async def import_data(
                 what_we_did         = item.get("what_we_did"),
                 notes               = item.get("notes"),
                 rating              = int(item.get("rating") or 5),
+                mood                = item.get("mood") if item.get("mood") in MOODS_BY_KEY else None,
             )
             db.add(entry)
             db.flush()   # get entry.id before creating child records
