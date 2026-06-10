@@ -24,6 +24,10 @@ from webauthn import (
     verify_authentication_response,
     options_to_json,
 )
+from webauthn.helpers import (
+    parse_registration_credential_json,
+    parse_authentication_credential_json,
+)
 from webauthn.helpers.structs import (
     AuthenticatorSelectionCriteria,
     AuthenticatorAttachment,
@@ -343,8 +347,9 @@ async def passkey_register(request: Request, db: Session = Depends(get_db)):
     if not challenge_b64:
         raise HTTPException(400, "No registration challenge in session")
     try:
+        reg_cred = parse_registration_credential_json(raw_body)
         verification = verify_registration_response(
-            credential=raw_body,
+            credential=reg_cred,
             expected_challenge=_b64url_decode(challenge_b64),
             expected_rp_id=APP_DOMAIN,
             expected_origin=APP_ORIGIN,
@@ -391,8 +396,9 @@ async def passkey_auth(request: Request, db: Session = Depends(get_db)):
     if not stored:
         raise HTTPException(400, "Unknown credential — register this device first")
     try:
+        auth_cred = parse_authentication_credential_json(raw_body)
         verification = verify_authentication_response(
-            credential=raw_body,
+            credential=auth_cred,
             expected_challenge=_b64url_decode(challenge_b64),
             expected_rp_id=APP_DOMAIN,
             expected_origin=APP_ORIGIN,
