@@ -101,11 +101,11 @@
       <div id="who-section">
         <p class="login-hint">Who are you?</p>
         <div class="who-buttons">
-          <button type="button" class="who-btn" onclick="selectUser('partner1', '{{ partner1_name }}')">
-            💕 {{ partner1_name }}
+          <button type="button" class="who-btn" onclick="selectUser('partner1')">
+            💕 Partner 1
           </button>
-          <button type="button" class="who-btn" onclick="selectUser('partner2', '{{ partner2_name }}')">
-            💕 {{ partner2_name }}
+          <button type="button" class="who-btn" onclick="selectUser('partner2')">
+            💕 Partner 2
           </button>
         </div>
       </div>
@@ -141,9 +141,9 @@
     document.getElementById('faceid-section').style.display = 'none';
   }
 
-  function selectUser(username, displayName) {
+  function selectUser(username) {
     document.getElementById('username-hidden').value = username;
-    document.getElementById('greeting-text').textContent = `👋 Hey ${displayName}!`;
+    document.getElementById('greeting-text').textContent = username === 'partner1' ? '👋 Hey Partner 1!' : '👋 Hey Partner 2!';
     document.getElementById('who-section').style.display = 'none';
     document.getElementById('faceid-section').style.display = 'none';
     document.getElementById('pw-form').style.display = 'block';
