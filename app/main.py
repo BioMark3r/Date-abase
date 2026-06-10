@@ -719,9 +719,23 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     anniversary = compute_anniversary(settings.get("anniversary_date", ""))
     mood_ring = compute_mood_ring(dates)   # dates already newest-first
 
+    # Chronological sequence number: oldest date = #1 (stable regardless of
+    # display order or client-side filtering)
+    asc = sorted(dates, key=lambda d: d.date_datetime)
+    date_seq = {d.id: i + 1 for i, d in enumerate(asc)}
+
+    # Moods actually present, in canonical MOODS order — drives the filter bar
+    present = {d.mood for d in dates if d.mood}
+    moods_present = [
+        {"key": k, "emoji": e, "label": l}
+        for k, e, l, c in MOODS if k in present
+    ]
+
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "dates": dates,
+        "date_seq": date_seq,
+        "moods_present": moods_present,
         "stats": {
             "total_dates":      len(dates),
             "time_together":    time_together,

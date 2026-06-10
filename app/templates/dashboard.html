@@ -206,10 +206,22 @@
   </div>
 </div>
 
+<!-- Mood filter bar -->
+{% if moods_present %}
+<div class="mood-filter-bar" id="mood-filter-bar">
+  <button type="button" class="mood-filter-btn is-active" data-filter="" onclick="filterByMood(this, '')">All</button>
+  {% for m in moods_present %}
+  <button type="button" class="mood-filter-btn" data-filter="{{ m.key }}" onclick="filterByMood(this, '{{ m.key }}')">
+    {{ m.emoji }} {{ m.label }}
+  </button>
+  {% endfor %}
+</div>
+{% endif %}
+
 <!-- Date cards -->
-<div class="dates-grid">
+<div class="dates-grid" id="dates-grid">
   {% for entry in dates %}
-  <article class="date-card">
+  <article class="date-card" data-mood="{{ entry.mood or '' }}">
     <div class="date-card-header">
       <div class="date-rating">
         {% for i in range(entry.rating or 5) %}❤️{% endfor %}
@@ -218,7 +230,7 @@
         {% endif %}
       </div>
       <div class="date-card-meta-right">
-        <span class="hex-badge" title="Date #{{ loop.index }}">{{ loop.index | hex_idx }}</span>
+        <span class="hex-badge" title="Date #{{ date_seq[entry.id] }}">{{ date_seq[entry.id] | hex_idx }}</span>
         <time class="date-when">{{ entry.date_datetime.strftime('%b %d, %Y') }}</time>
       </div>
     </div>
@@ -246,6 +258,7 @@
   </article>
   {% endfor %}
 </div>
+<p class="mood-filter-empty" id="mood-filter-empty" style="display:none;">No dates with this mood yet. 🤷</p>
 
 {% else %}
 <!-- Empty state -->
@@ -257,4 +270,21 @@
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function filterByMood(btn, mood) {
+    document.querySelectorAll('.mood-filter-btn').forEach(b => b.classList.remove('is-active'));
+    btn.classList.add('is-active');
+    let shown = 0;
+    document.querySelectorAll('#dates-grid .date-card').forEach(card => {
+      const match = !mood || card.dataset.mood === mood;
+      card.style.display = match ? '' : 'none';
+      if (match) shown++;
+    });
+    const empty = document.getElementById('mood-filter-empty');
+    if (empty) empty.style.display = shown === 0 ? 'block' : 'none';
+  }
+</script>
 {% endblock %}
