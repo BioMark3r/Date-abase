@@ -142,6 +142,28 @@ class AppSettings(Base):
     value = Column(Text, nullable=True)
 
 
+class LoveNote(Base):
+    """A short note one partner leaves for the other — encouragement, romance, etc."""
+    __tablename__ = "love_notes"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    author     = Column(String(200), nullable=False)   # display name snapshot
+    body       = Column(Text, nullable=False)
+    color      = Column(String(20), nullable=True)      # sticky-note color key
+    pinned     = Column(Integer, default=0)             # 0/1 — pinned notes float to top
+    created_at = Column(DateTime, default=func.now())
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "author": self.author,
+            "body": self.body,
+            "color": self.color,
+            "pinned": bool(self.pinned),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class BucketListItem(Base):
     """A shared date-idea wish list item the couple can check off."""
     __tablename__ = "bucket_list"

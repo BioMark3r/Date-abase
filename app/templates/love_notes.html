@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Love Notes 💌 — Date-abase{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>💌 Love Notes</h1>
+  <p class="page-subtitle">Little notes of encouragement, romance, and everything in between 💕</p>
+</div>
+
+<form method="post" action="/love-notes/new" class="note-add-form">
+  <textarea name="body" class="form-input note-textarea" rows="3" maxlength="2000" required
+            placeholder="Leave a sweet note… 💕" aria-label="Your note"></textarea>
+  <div class="note-add-controls">
+    <div class="note-color-picker" role="radiogroup" aria-label="Note color">
+      <input type="hidden" name="color" id="note-color-hidden" value="{{ note_colors[0][0] }}" />
+      {% for key, hex in note_colors %}
+      <button type="button" class="note-color-swatch{% if loop.first %} is-selected{% endif %}"
+              style="background: {{ hex }};" data-color="{{ key }}"
+              role="radio" aria-checked="{{ 'true' if loop.first else 'false' }}"
+              aria-label="{{ key }}" title="{{ key }}" onclick="pickNoteColor(this)"></button>
+      {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-primary">💌 Post Note</button>
+  </div>
+</form>
+
+{% if not notes %}
+<div class="empty-state">
+  <div class="empty-graphic">💌</div>
+  <h2>No notes yet!</h2>
+  <p>Be the first to leave a little love.</p>
+</div>
+{% else %}
+<div class="notes-wall">
+  {% for note in notes %}
+  <div class="love-note love-note-{{ note.color or 'pink' }}{% if note.pinned %} is-pinned{% endif %}">
+    {% if note.pinned %}<span class="note-pin-badge" title="Pinned">📌</span>{% endif %}
+    <div class="note-body">{{ note.body }}</div>
+    <div class="note-footer">
+      <span class="note-author">— {{ note.author }}</span>
+      <span class="note-date">{{ note.created_at.strftime('%b %d, %Y') }}</span>
+    </div>
+    <div class="note-actions">
+      <form method="post" action="/love-notes/{{ note.id }}/pin" style="display:inline;">
+        <button type="submit" class="note-action-btn" title="{{ 'Unpin' if note.pinned else 'Pin' }}"
+                aria-label="{{ 'Unpin note' if note.pinned else 'Pin note' }}">📌</button>
+      </form>
+      <form method="post" action="/love-notes/{{ note.id }}/delete" style="display:inline;"
+            onsubmit="return confirm('Delete this note?');">
+        <button type="submit" class="note-action-btn" title="Delete" aria-label="Delete note">🗑️</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function pickNoteColor(btn) {
+    document.querySelectorAll('.note-color-swatch').forEach(s => {
+      s.classList.remove('is-selected');
+      s.setAttribute('aria-checked', 'false');
+    });
+    btn.classList.add('is-selected');
+    btn.setAttribute('aria-checked', 'true');
+    document.getElementById('note-color-hidden').value = btn.dataset.color;
+  }
+</script>
+{% endblock %}

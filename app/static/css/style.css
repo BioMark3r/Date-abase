@@ -2409,6 +2409,100 @@ a:hover { color: var(--pink); }
 .mood-bar-count { font-size: 0.85rem; color: var(--gray-600); text-align: right; }
 .mood-bar-count small { color: var(--gray-400); }
 
+/* ── Love Notes ─────────────────────────────────────────────────────────────── */
+.note-add-form {
+  background: var(--white);
+  border: 1.5px solid var(--pink-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 1.25rem;
+  margin-bottom: 1.75rem;
+}
+.note-textarea { resize: vertical; width: 100%; }
+.note-add-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.85rem;
+  flex-wrap: wrap;
+}
+.note-color-picker { display: flex; gap: 0.5rem; }
+.note-color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+.note-color-swatch:hover { transform: scale(1.1); }
+.note-color-swatch.is-selected {
+  box-shadow: 0 0 0 3px var(--white), 0 0 0 5px var(--pink);
+}
+
+.notes-wall {
+  columns: 3 240px;
+  column-gap: 1rem;
+}
+.love-note {
+  position: relative;
+  break-inside: avoid;
+  margin-bottom: 1rem;
+  padding: 1.1rem 1.1rem 0.85rem;
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+  color: #3a2a30;
+  transform: rotate(-0.6deg);
+  transition: transform var(--transition);
+}
+.love-note:nth-child(even) { transform: rotate(0.7deg); }
+.love-note:hover { transform: rotate(0) scale(1.015); }
+.love-note.is-pinned { box-shadow: 0 4px 16px rgba(201,24,74,0.28); }
+.note-pin-badge { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-size: 1.1rem; }
+.note-body { font-size: 1.02rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.note-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+  font-size: 0.8rem;
+}
+.note-author { font-weight: 700; font-family: 'Playfair Display', serif; }
+.note-date { color: rgba(0,0,0,0.45); white-space: nowrap; }
+.note-actions {
+  display: flex;
+  gap: 0.25rem;
+  justify-content: flex-end;
+  margin-top: 0.4rem;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+.love-note:hover .note-actions, .love-note:focus-within .note-actions { opacity: 1; }
+.note-action-btn {
+  background: rgba(255,255,255,0.5);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.15rem 0.4rem;
+}
+.note-action-btn:hover { background: rgba(255,255,255,0.9); }
+
+/* Sticky-note colors (keys match NOTE_COLORS in main.py) */
+.love-note-pink   { background: #FFD6E0; }
+.love-note-peach  { background: #FFE5C2; }
+.love-note-yellow { background: #FFF3B0; }
+.love-note-mint   { background: #CFF5E7; }
+.love-note-lilac  { background: #E4D6FF; }
+.love-note-blue   { background: #CDE7FF; }
+
+@media (max-width: 640px) {
+  .notes-wall { columns: 1; }
+  .note-actions { opacity: 1; }  /* no hover on touch */
+}
+
 /* ── Multi-day toggle (date form) ───────────────────────────────────────────── */
 .multiday-toggle {
   display: flex;

@@ -37,7 +37,7 @@ from webauthn.helpers.structs import (
 )
 
 from .database import engine, get_db, Base, SessionLocal
-from .models import DateEntry, DateImage, DateLocation, CommEntry, AppSettings, AuditLog, User, WebAuthnCredential, BucketListItem
+from .models import DateEntry, DateImage, DateLocation, CommEntry, AppSettings, AuditLog, User, WebAuthnCredential, BucketListItem, LoveNote
 
 Base.metadata.create_all(bind=engine)
 
@@ -114,6 +114,17 @@ MOODS = [
     ("awkward", "😬", "Awkward",     "#9AA0A6"),
 ]
 MOODS_BY_KEY = {key: {"emoji": e, "label": l, "color": c} for key, e, l, c in MOODS}
+
+# ── Love-note sticky colors ───────────────────────────────────────────────────
+NOTE_COLORS = [
+    ("pink",   "#FFD6E0"),
+    ("peach",  "#FFE5C2"),
+    ("yellow", "#FFF3B0"),
+    ("mint",   "#CFF5E7"),
+    ("lilac",  "#E4D6FF"),
+    ("blue",   "#CDE7FF"),
+]
+NOTE_COLOR_KEYS = {k for k, _ in NOTE_COLORS}
 
 # Make mood lookups available in every template (for mood chips on cards/detail)
 templates.env.globals["MOODS"] = MOODS
@@ -1246,6 +1257,64 @@ async def bucket_delete(request: Request, item_id: int, db: Session = Depends(ge
         db.delete(item)
         db.commit()
     return RedirectResponse("/bucket-list", status_code=302)
+
+
+# ── Love Notes ────────────────────────────────────────────────────────────────
+
+@app.get("/love-notes", response_class=HTMLResponse)
+async def love_notes(request: Request, db: Session = Depends(get_db)):
+    if not require_auth(request):
+        return RedirectResponse("/", status_code=302)
+    notes = (
+        db.query(LoveNote)
+        .order_by(LoveNote.pinned.desc(), LoveNote.created_at.desc())
+        .all()
+    )
+    return templates.TemplateResponse("love_notes.html", {
+        "request": request, "notes": notes, "note_colors": NOTE_COLORS,
+    })
+
+
+@app.post("/love-notes/new")
+async def love_note_add(
+    request: Request,
+    body:  str = Form(...),
+    color: str = Form("pink"),
+    db: Session = Depends(get_db),
+):
+    if not require_auth(request):
+        return RedirectResponse("/", status_code=302)
+    body = body.strip()
+    if body:
+        db.add(LoveNote(
+            author=session_display_name(request),
+            body=body[:2000],
+            color=color if color in NOTE_COLOR_KEYS else "pink",
+        ))
+        db.commit()
+    return RedirectResponse("/love-notes", status_code=302)
+
+
+@app.post("/love-notes/{note_id}/pin")
+async def love_note_pin(request: Request, note_id: int, db: Session = Depends(get_db)):
+    if not require_auth(request):
+        return RedirectResponse("/", status_code=302)
+    note = db.query(LoveNote).filter(LoveNote.id == note_id).first()
+    if note:
+        note.pinned = 0 if note.pinned else 1
+        db.commit()
+    return RedirectResponse("/love-notes", status_code=302)
+
+
+@app.post("/love-notes/{note_id}/delete")
+async def love_note_delete(request: Request, note_id: int, db: Session = Depends(get_db)):
+    if not require_auth(request):
+        return RedirectResponse("/", status_code=302)
+    note = db.query(LoveNote).filter(LoveNote.id == note_id).first()
+    if note:
+        db.delete(note)
+        db.commit()
+    return RedirectResponse("/love-notes", status_code=302)
 
 
 # ── Settings ─────────────────────────────────────────────────────────────────
