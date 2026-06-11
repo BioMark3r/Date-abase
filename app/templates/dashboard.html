@@ -43,6 +43,17 @@
 </div>
 {% endif %}
 
+<!-- Featured love note -->
+{% if featured_note %}
+<a href="/love-notes" class="featured-note love-note-{{ featured_note.color or 'pink' }}">
+  <span class="featured-note-icon">💌</span>
+  <div class="featured-note-body">
+    <p class="featured-note-text">"{{ featured_note.body[:160] }}{% if featured_note.body|length > 160 %}…{% endif %}"</p>
+    <p class="featured-note-author">— {{ featured_note.author }}</p>
+  </div>
+</a>
+{% endif %}
+
 <!-- Mood Ring -->
 {% if mood_ring %}
 <div class="mood-ring-card">

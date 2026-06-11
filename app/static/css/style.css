@@ -1628,9 +1628,16 @@ a:hover { color: var(--pink); }
   align-items: flex-end;
   gap: 0.35rem;
   height: 130px;
+  /* Keep the chart contained: if 12 columns don't fit, scroll inside the card
+     instead of spilling off the screen. overflow-x:auto forces overflow-y to
+     auto too, so we add bottom padding for the rotated labels to avoid a
+     spurious vertical scrollbar. */
+  max-width: 100%;
+  overflow-x: auto;
+  padding-bottom: 1.9rem;
 }
 .bar-col {
-  flex: 1;
+  flex: 1 0 30px;           /* grow to fill, but never shrink below 30px */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2408,6 +2415,23 @@ a:hover { color: var(--pink); }
 .mood-bar-fill { height: 100%; border-radius: 20px; transition: width 0.6s cubic-bezier(.2,.8,.2,1); }
 .mood-bar-count { font-size: 0.85rem; color: var(--gray-600); text-align: right; }
 .mood-bar-count small { color: var(--gray-400); }
+
+/* ── Featured love note (dashboard) ─────────────────────────────────────────── */
+.featured-note {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.1);
+  margin-bottom: 1.5rem;
+  color: #3a2a30;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+.featured-note:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.15); color: #3a2a30; }
+.featured-note-icon { font-size: 1.8rem; flex-shrink: 0; }
+.featured-note-text { font-size: 1.05rem; line-height: 1.45; font-style: italic; }
+.featured-note-author { font-weight: 700; font-family: 'Playfair Display', serif; font-size: 0.85rem; margin-top: 0.3rem; }
 
 /* ── Love Notes ─────────────────────────────────────────────────────────────── */
 .note-add-form {

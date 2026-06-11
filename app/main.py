@@ -758,6 +758,10 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
     anniversary = compute_anniversary(settings.get("anniversary_date", ""))
     mood_ring = compute_mood_ring(dates)   # dates already newest-first
 
+    # A random love note to surface on the dashboard
+    from sqlalchemy import func as _func
+    featured_note = db.query(LoveNote).order_by(_func.random()).first()
+
     # Chronological sequence number: oldest date = #1 (stable regardless of
     # display order or client-side filtering)
     asc = sorted(dates, key=lambda d: d.date_datetime)
@@ -785,6 +789,7 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
         "streak": streak,
         "anniversary": anniversary,
         "mood_ring": mood_ring,
+        "featured_note": featured_note,
     })
 
 
