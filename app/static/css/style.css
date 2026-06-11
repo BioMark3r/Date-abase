@@ -2409,6 +2409,18 @@ a:hover { color: var(--pink); }
 .mood-bar-count { font-size: 0.85rem; color: var(--gray-600); text-align: right; }
 .mood-bar-count small { color: var(--gray-400); }
 
+/* ── Multi-day toggle (date form) ───────────────────────────────────────────── */
+.multiday-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--gray-800);
+}
+.multiday-toggle input { width: 18px; height: 18px; accent-color: var(--pink); cursor: pointer; }
+.meta-chip-accent { background: var(--pink); color: #fff; border-color: var(--pink); }
+
 /* ── Mood filter bar (dashboard) ────────────────────────────────────────────── */
 .mood-filter-bar {
   display: flex;

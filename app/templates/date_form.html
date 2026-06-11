@@ -32,24 +32,39 @@
 
       <div class="form-row">
         <div class="form-group">
-          <label for="date_datetime">Date &amp; Time <span class="required">*</span></label>
+          <label for="date_datetime">{% if entry and entry.end_datetime %}Start {% endif %}Date &amp; Time <span class="required">*</span></label>
           <input type="datetime-local" id="date_datetime" name="date_datetime" class="form-input"
             value="{{ entry.date_datetime.strftime('%Y-%m-%dT%H:%M') if entry and entry.date_datetime else '' }}"
             required />
         </div>
-        <div class="form-group">
+        <div class="form-group" id="duration-group">
           <label>Duration</label>
           <div class="duration-hm">
             <input type="number" name="duration_hours" class="form-input duration-h"
               placeholder="0" min="0" max="99"
-              value="{{ (entry.duration_minutes // 60) if entry and entry.duration_minutes else '' }}" />
+              value="{{ (entry.duration_minutes // 60) if entry and entry.duration_minutes and not entry.end_datetime else '' }}" />
             <span class="duration-sep">h</span>
             <input type="number" name="duration_mins" class="form-input duration-m"
               placeholder="0" min="0" max="59"
-              value="{{ (entry.duration_minutes % 60) if entry and entry.duration_minutes else '' }}" />
+              value="{{ (entry.duration_minutes % 60) if entry and entry.duration_minutes and not entry.end_datetime else '' }}" />
             <span class="duration-sep">m</span>
           </div>
         </div>
+      </div>
+
+      <!-- Multi-day toggle -->
+      <div class="form-group">
+        <label class="multiday-toggle">
+          <input type="checkbox" id="is_multiday" name="is_multiday" value="1"
+            {% if entry and entry.end_datetime %}checked{% endif %} onchange="toggleMultiday()" />
+          <span>📆 Multi-day date (e.g. a weekend trip) — track total time across the whole span</span>
+        </label>
+      </div>
+      <div class="form-group" id="enddate-group" style="display:none;">
+        <label for="end_datetime">End Date &amp; Time</label>
+        <input type="datetime-local" id="end_datetime" name="end_datetime" class="form-input"
+          value="{{ entry.end_datetime.strftime('%Y-%m-%dT%H:%M') if entry and entry.end_datetime else '' }}" />
+        <span class="form-hint" id="multiday-span-hint"></span>
       </div>
 
       <!-- Rating row -->
@@ -463,6 +478,34 @@
       applyMood(key);
     });
   });
+
+  // ── Multi-day toggle ─────────────────────────────────────────────────────────
+  function toggleMultiday() {
+    const on = document.getElementById('is_multiday').checked;
+    document.getElementById('enddate-group').style.display = on ? '' : 'none';
+    document.getElementById('duration-group').style.display = on ? 'none' : '';
+    if (on) updateSpanHint();
+  }
+  function updateSpanHint() {
+    const startEl = document.getElementById('date_datetime');
+    const endEl   = document.getElementById('end_datetime');
+    const hint    = document.getElementById('multiday-span-hint');
+    if (!startEl.value || !endEl.value) { hint.textContent = ''; return; }
+    const start = new Date(startEl.value), end = new Date(endEl.value);
+    if (end <= start) { hint.textContent = '⚠️ End must be after the start.'; return; }
+    const mins = Math.round((end - start) / 60000);
+    const d = Math.floor(mins / 1440), h = Math.floor((mins % 1440) / 60), m = mins % 60;
+    let parts = [];
+    if (d) parts.push(d + 'd');
+    if (h) parts.push(h + 'h');
+    if (m) parts.push(m + 'm');
+    hint.textContent = '⏱️ Total time together: ' + (parts.join(' ') || '0m');
+  }
+  document.getElementById('date_datetime').addEventListener('change', () => {
+    if (document.getElementById('is_multiday').checked) updateSpanHint();
+  });
+  document.getElementById('end_datetime').addEventListener('change', updateSpanHint);
+  toggleMultiday();  // set correct initial visibility on edit
 
   // ── Image preview & delete helpers ──────────────────────────────────────────
   function previewImages(input) {

@@ -227,6 +227,9 @@ def _ensure_schema() -> None:
     if "mood" not in cols:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE dates ADD COLUMN mood VARCHAR(40)"))
+    if "end_datetime" not in cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE dates ADD COLUMN end_datetime DATETIME"))
 
 
 @app.on_event("startup")
@@ -255,6 +258,7 @@ AUDIT_FIELD_LABELS = {
     "title":               "Title",
     "pre_date_activities": "Pre-date activities",
     "date_datetime":       "Date & time",
+    "end_datetime":        "End date & time",
     "duration_minutes":    "Duration",
     "location_name":       "Location",
     "what_we_did":         "What we did",
@@ -319,6 +323,30 @@ def save_locations(db: Session, date_id: int, locations_json: str) -> None:
             label=(loc.get("label") or "").strip() or None,
             sort_order=i,
         ))
+
+
+def _resolve_span(start_dt, is_multiday: str, end_datetime: str,
+                  duration_hours: str, duration_mins: str):
+    """Work out (end_datetime, total_minutes) for a date.
+
+    Multi-day: end is parsed from the form and total time is the full span.
+    Single-day: end is None and total time comes from the hours/minutes inputs.
+    Returns (False, 0) if the multi-day end is invalid (caller shows an error).
+    """
+    multiday = str(is_multiday).lower() in ("1", "true", "on", "yes")
+    if multiday and end_datetime.strip():
+        try:
+            end_dt = datetime.fromisoformat(end_datetime)
+        except ValueError:
+            return False, 0
+        if end_dt <= start_dt:
+            return False, 0
+        total = int((end_dt - start_dt).total_seconds() // 60)
+        return end_dt, total
+    # Single-day: manual hours/minutes
+    h = int(duration_hours) if duration_hours.strip().isdigit() else 0
+    m = int(duration_mins)  if duration_mins.strip().isdigit()  else 0
+    return None, h * 60 + m
 
 
 async def save_upload(file: UploadFile) -> str | None:
@@ -769,6 +797,8 @@ async def create_date(
     title:               str          = Form(...),
     pre_date_activities: str          = Form(""),
     date_datetime:       str          = Form(...),
+    is_multiday:         str          = Form(""),
+    end_datetime:        str          = Form(""),
     duration_hours:      str          = Form(""),
     duration_mins:       str          = Form(""),
     location_name:       str          = Form(""),
@@ -782,20 +812,24 @@ async def create_date(
 ):
     if not require_auth(request):
         return RedirectResponse("/", status_code=302)
-    try:
-        dt = datetime.fromisoformat(date_datetime)
-    except ValueError:
+
+    def _form_err(msg):
         return templates.TemplateResponse("date_form.html", {
-            "request": request, "entry": None,
-            "error": "Invalid date format. 📅",
+            "request": request, "entry": None, "error": msg,
             "settings": get_settings(db),
             "existing_locs_json": locations_json or "[]",
             "moods": MOODS,
         })
 
-    h = int(duration_hours) if duration_hours.strip().isdigit() else 0
-    m = int(duration_mins)  if duration_mins.strip().isdigit()  else 0
-    total_mins = h * 60 + m
+    try:
+        dt = datetime.fromisoformat(date_datetime)
+    except ValueError:
+        return _form_err("Invalid date format. 📅")
+
+    end_dt, total_mins = _resolve_span(dt, is_multiday, end_datetime,
+                                       duration_hours, duration_mins)
+    if end_dt is False:
+        return _form_err("The end date/time must be after the start. 📅")
 
     # Derive a summary location_name from first location for legacy/export compat
     first_loc_name = None
@@ -810,6 +844,7 @@ async def create_date(
         title=title,
         pre_date_activities=pre_date_activities or None,
         date_datetime=dt,
+        end_datetime=end_dt,
         duration_minutes=total_mins if total_mins else None,
         location_name=first_loc_name or location_name or None,
         location_lat=None,
@@ -897,6 +932,8 @@ async def update_date(
     title:               str          = Form(...),
     pre_date_activities: str          = Form(""),
     date_datetime:       str          = Form(...),
+    is_multiday:         str          = Form(""),
+    end_datetime:        str          = Form(""),
     duration_hours:      str          = Form(""),
     duration_mins:       str          = Form(""),
     location_name:       str          = Form(""),
@@ -921,15 +958,24 @@ async def update_date(
     )
     if not entry:
         raise HTTPException(status_code=404, detail="Date not found 💔")
-    try:
-        dt = datetime.fromisoformat(date_datetime)
-    except ValueError:
+
+    def _form_err(msg):
         return templates.TemplateResponse("date_form.html", {
-            "request": request, "entry": entry, "error": "Invalid date format. 📅",
+            "request": request, "entry": entry, "error": msg,
             "settings": get_settings(db),
             "existing_locs_json": locations_json or "[]",
             "moods": MOODS,
         })
+
+    try:
+        dt = datetime.fromisoformat(date_datetime)
+    except ValueError:
+        return _form_err("Invalid date format. 📅")
+
+    end_dt, total_mins = _resolve_span(dt, is_multiday, end_datetime,
+                                       duration_hours, duration_mins)
+    if end_dt is False:
+        return _form_err("The end date/time must be after the start. 📅")
 
     # Delete marked images
     to_delete = [int(x) for x in delete_images.split(",") if x.strip().isdigit()]
@@ -947,15 +993,12 @@ async def update_date(
         if fname:
             db.add(DateImage(date_id=entry.id, filename=fname))
 
-    h = int(duration_hours) if duration_hours.strip().isdigit() else 0
-    m = int(duration_mins)  if duration_mins.strip().isdigit()  else 0
-    total_mins = h * 60 + m
-
     # Snapshot before
     old_vals = {
         "title":               entry.title,
         "pre_date_activities": entry.pre_date_activities,
         "date_datetime":       str(entry.date_datetime),
+        "end_datetime":        str(entry.end_datetime) if entry.end_datetime else None,
         "duration_minutes":    entry.duration_minutes,
         "location_name":       entry.location_name,
         "what_we_did":         entry.what_we_did,
@@ -967,6 +1010,7 @@ async def update_date(
     entry.title               = title
     entry.pre_date_activities = pre_date_activities or None
     entry.date_datetime       = dt
+    entry.end_datetime        = end_dt
     entry.duration_minutes    = total_mins if total_mins else None
     entry.location_name       = location_name or None
     entry.location_lat        = float(location_lat) if location_lat else None
@@ -991,6 +1035,7 @@ async def update_date(
         "title":               entry.title,
         "pre_date_activities": entry.pre_date_activities,
         "date_datetime":       str(entry.date_datetime),
+        "end_datetime":        str(entry.end_datetime) if entry.end_datetime else None,
         "duration_minutes":    entry.duration_minutes,
         "location_name":       entry.location_name,
         "what_we_did":         entry.what_we_did,
@@ -1308,7 +1353,13 @@ async def audit_log(request: Request, db: Session = Depends(get_db)):
 
 def _fmt_mins(m: int | None) -> str:
     if not m: return "—"
-    h, rem = divmod(int(m), 60)
+    m = int(m)
+    # Day-aware for long spans (multi-day dates)
+    if m >= 1440:
+        d, rem_m = divmod(m, 1440)
+        h = rem_m // 60
+        return f"{d}d {h}h" if h else f"{d}d"
+    h, rem = divmod(m, 60)
     if h and rem: return f"{h}h {rem}m"
     return f"{h}h" if h else f"{rem}m"
 
@@ -1608,6 +1659,13 @@ async def import_data(
             except (ValueError, TypeError):
                 dt = datetime.now()
 
+            # ── End datetime (multi-day dates) ────────────────────────────────
+            raw_end = item.get("end_datetime")
+            try:
+                end_dt = datetime.fromisoformat(str(raw_end)) if raw_end else None
+            except (ValueError, TypeError):
+                end_dt = None
+
             # ── Duration: accept minutes int OR legacy h/m dict ───────────────
             dur = item.get("duration_minutes")
             if dur is None:
@@ -1634,6 +1692,7 @@ async def import_data(
                 title               = item.get("title") or "Untitled Date",
                 pre_date_activities = item.get("pre_date_activities"),
                 date_datetime       = dt,
+                end_datetime        = end_dt,
                 duration_minutes    = dur,
                 location_name       = first_name,
                 location_lat        = float(first_lat) if first_lat else None,

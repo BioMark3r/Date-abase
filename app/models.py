@@ -12,6 +12,7 @@ class DateEntry(Base):
     title = Column(String(200), nullable=False)
     pre_date_activities = Column(Text, nullable=True)
     date_datetime = Column(DateTime, nullable=False)
+    end_datetime = Column(DateTime, nullable=True)   # set for multi-day / spanning dates
     duration_minutes = Column(Integer, nullable=True)
     location_name = Column(String(300), nullable=True)
     location_lat = Column(Float, nullable=True)
@@ -36,6 +37,17 @@ class DateEntry(Base):
         order_by="DateLocation.sort_order",
     )
 
+    @property
+    def is_multiday(self) -> bool:
+        return self.end_datetime is not None
+
+    @property
+    def span_days(self) -> int:
+        """Inclusive number of calendar days the date spans (1 for single-day)."""
+        if not self.end_datetime:
+            return 1
+        return (self.end_datetime.date() - self.date_datetime.date()).days + 1
+
     def to_dict(self):
         locs = []
         try:
@@ -59,6 +71,7 @@ class DateEntry(Base):
             "title": self.title,
             "pre_date_activities": self.pre_date_activities,
             "date_datetime": self.date_datetime.isoformat() if self.date_datetime else None,
+            "end_datetime": self.end_datetime.isoformat() if self.end_datetime else None,
             "duration_minutes": self.duration_minutes,
             # legacy single-location fields kept for backward compat
             "location_name": self.location_name,

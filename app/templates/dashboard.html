@@ -240,7 +240,11 @@
     {% if entry.location_name %}
     <p class="date-location">📍 {{ entry.location_name }}</p>
     {% endif %}
-    {% if entry.duration_minutes %}
+    {% if entry.end_datetime %}
+    <p class="date-duration">🏖️ {{ entry.span_days }}-day{{ 's' if entry.span_days != 1 }}
+      {% if entry.duration_minutes %}· {{ entry.duration_minutes // 1440 }}d {{ (entry.duration_minutes % 1440) // 60 }}h together{% endif %}
+    </p>
+    {% elif entry.duration_minutes %}
     <p class="date-duration">⏱️
       {% if entry.duration_minutes >= 60 %}
         {{ entry.duration_minutes // 60 }}h {{ entry.duration_minutes % 60 }}m

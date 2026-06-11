@@ -24,10 +24,17 @@
   </div>
   <h1 class="detail-title">{{ entry.title }}</h1>
   <div class="detail-meta">
+    {% if entry.end_datetime %}
+    <span class="meta-chip">📆 {{ entry.date_datetime.strftime('%b %d, %Y, %-I:%M %p') }} → {{ entry.end_datetime.strftime('%b %d, %Y, %-I:%M %p') }}</span>
+    <span class="meta-chip meta-chip-accent">🏖️ {{ entry.span_days }}-day{{ 's' if entry.span_days != 1 }}</span>
+    {% else %}
     <span class="meta-chip">📅 {{ entry.date_datetime.strftime('%A, %B %d, %Y at %-I:%M %p') }}</span>
+    {% endif %}
     {% if entry.duration_minutes %}
     <span class="meta-chip">⏱️
-      {% if entry.duration_minutes >= 60 %}
+      {% if entry.duration_minutes >= 1440 %}
+        {{ entry.duration_minutes // 1440 }}d {% if (entry.duration_minutes % 1440) // 60 %}{{ (entry.duration_minutes % 1440) // 60 }}h{% endif %} together
+      {% elif entry.duration_minutes >= 60 %}
         {{ entry.duration_minutes // 60 }}h {% if entry.duration_minutes % 60 %}{{ entry.duration_minutes % 60 }}m{% endif %}
       {% else %}
         {{ entry.duration_minutes }} minutes
