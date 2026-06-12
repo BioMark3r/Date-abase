@@ -41,3 +41,7 @@ logs/
 
 # Docker
 .dockerignore
+# Per-host overrides (e.g. the Pi's real Tailscale APP_DOMAIN/APP_ORIGIN).
+# Compose auto-merges this over docker-compose.yml; keep it out of git so a
+# pull can never reset your production WebAuthn/Face ID domain.
+docker-compose.override.yml

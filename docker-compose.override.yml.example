@@ -1,0 +1,19 @@
+# ── Per-host overrides ────────────────────────────────────────────────────────
+# Copy this to `docker-compose.override.yml` on the machine that actually serves
+# the app (e.g. the Raspberry Pi behind Tailscale). Docker Compose automatically
+# merges docker-compose.override.yml over docker-compose.yml, and that file is
+# gitignored — so `git pull` can never reset your real domain back to localhost.
+#
+#   cp docker-compose.override.yml.example docker-compose.override.yml
+#   # edit the values below to match your Tailscale hostname
+#   docker compose up -d
+#
+# WebAuthn / Face ID requires APP_DOMAIN and APP_ORIGIN to EXACTLY match the URL
+# the browser uses (no port — Tailscale Funnel terminates TLS on 443).
+services:
+  dateabase:
+    environment:
+      - APP_DOMAIN=galaxypi.tailf4450e.ts.net
+      - APP_ORIGIN=https://galaxypi.tailf4450e.ts.net
+      # Also set a unique secret here so it survives pulls (required in prod):
+      # - SECRET_KEY=replace-with-a-long-random-string

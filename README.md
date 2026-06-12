@@ -76,19 +76,33 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ## ⚙️ Configuration
 
-All configuration is done via environment variables (or a `.env` file for local dev):
+All configuration is done via environment variables:
 
 | Variable | Default | Description |
 |---|---|---|
-| `SHARED_PASSWORD` | `lovebirds` | The login password for the app |
-| `SECRET_KEY` | `super-secret-love-key-change-me` | Session signing key — **change this in production!** |
+| `PARTNER1_NAME` / `PARTNER2_NAME` | `Partner 1` / `Partner 2` | Display names for the two accounts |
+| `PARTNER1_PASSWORD` / `PARTNER2_PASSWORD` | `lovebirds1` / `lovebirds2` | First-boot passwords (change in Settings afterward; env is ignored once set) |
+| `SECRET_KEY` | `super-secret-love-key-change-me` | Session signing key — **required in production** (the app refuses to boot with the default when `APP_DOMAIN` isn't `localhost`) |
+| `APP_DOMAIN` | `localhost` | WebAuthn Relying-Party ID — must equal the hostname in the browser URL (no port) |
+| `APP_ORIGIN` | `http://localhost:8000` | WebAuthn origin — must exactly match the browser's `scheme://host` (e.g. `https://yourpi.tailXXXX.ts.net`) |
 | `DATABASE_URL` | `sqlite:////data/dateabase.db` | SQLAlchemy DB URL — SQLite path inside Docker volume |
 
-**Example `.env` for local dev:**
-```env
-SHARED_PASSWORD=somethingcute
-SECRET_KEY=a-very-long-random-string-goes-here
-DATABASE_URL=sqlite:///./data/dateabase.db
+### 🔐 Face ID / Tailscale deployment
+
+Face ID (WebAuthn) only works over HTTPS, and `APP_DOMAIN`/`APP_ORIGIN` must **exactly** match the URL your browser uses. With Tailscale Funnel that's your `*.ts.net` hostname on port 443 (no `:8000`).
+
+`docker-compose.yml` ships with `localhost` defaults. **Don't edit it on your server** — a `git pull` can reset it (and break Face ID with *"The RP ID localhost is invalid for this domain"*). Instead use a gitignored per-host override:
+
+```bash
+cp docker-compose.override.yml.example docker-compose.override.yml
+# edit APP_DOMAIN / APP_ORIGIN (and SECRET_KEY) to match your Tailscale host
+docker compose up -d
+```
+
+Compose auto-merges `docker-compose.override.yml` over `docker-compose.yml`, and it's gitignored, so your real domain survives every pull. Verify with:
+
+```bash
+docker compose exec dateabase printenv APP_DOMAIN APP_ORIGIN
 ```
 
 ---
